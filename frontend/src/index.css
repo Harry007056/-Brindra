@@ -1,11 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Typography */
+  --font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --font-size-base: 1em;
+  font-family: var(--font-family);
   line-height: 1.5;
   font-weight: 400;
 
+  /* Color palette */
+  --color-primary: #4A90E2;          /* Soft sky blue */
+  --color-secondary: #A8E6CF;        /* Light teal / mint */
+  --color-accent: #6B8E23;           /* Leaf green */
+  --color-text: #213547;             /* Dark slate for text */
+  --color-background: #F0F8FF;       /* Very light blue */
+  --color-background-alt: #FFFFFF;   /* Pure white for gradients */
+  --color-card-bg: rgba(255, 255, 255, 0.8);
+  --color-shadow: rgba(0, 0, 0, 0.1);
+
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  background-image: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-alt) 100%);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,12 +33,14 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-primary);
   text-decoration: inherit;
+  transition: color 0.3s ease;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--color-secondary);
 }
+
 
 body {
   margin: 0;
@@ -28,7 +48,11 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-image: linear-gradient(150deg, var(--color-background) 0%, var(--color-background-alt) 80%);
+  font-family: var(--font-family);
+  color: var(--color-text);
 }
+
 
 h1 {
   font-size: 3.2em;
@@ -36,33 +60,96 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  padding: 0.6em 1.4em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--color-primary);
+  color: white;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: background-color 0.25s ease, transform 0.2s ease;
 }
 button:hover {
-  border-color: #646cff;
+  background-color: var(--color-secondary);
+  transform: translateY(-2px);
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 4px auto var(--color-accent);
+}
+
+
+
+.card {
+  background: var(--color-card-bg);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px var(--color-shadow);
+  backdrop-filter: blur(6px);
+  transition: transform 0.3s ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+}
+
+/* Kirigami / paper-cutout utilities */
+:root {
+  --kirigami-shadow: 0 10px 30px rgba(33,53,71,0.08);
+}
+
+.kirigami-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(250,250,250,0.8));
+  border-radius: 18px;
+  padding: 1.25rem;
+  box-shadow: var(--kirigami-shadow);
+  border: 1px solid rgba(74,144,226,0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.kirigami-cut {
+  position: absolute;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.06));
+  opacity: 0.9;
+}
+
+.organic-bg {
+  position: absolute;
+  right: -8%;
+  top: -6%;
+  width: 320px;
+  height: 320px;
+  transform: rotate(14deg);
+  opacity: 0.16;
+  mix-blend-mode: multiply;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.soft-input {
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(33,53,71,0.06);
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(33,53,71,0.04) inset;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    color: var(--color-text);
+    background-color: var(--color-background-alt);
   }
   a:hover {
-    color: #747bff;
+    color: var(--color-secondary);
   }
   button {
-    background-color: #f9f9f9;
+    background-color: var(--color-primary);
   }
 }
