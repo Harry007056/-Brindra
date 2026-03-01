@@ -1,0 +1,23 @@
+<svg width="240" height="80" viewBox="0 0 240 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1">
+      <stop offset="0" stop-color="#7FB7F7" />
+      <stop offset="1" stop-color="#AECFF0" />
+    </linearGradient>
+    <filter id="f1" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- organic leaf shape -->
+  <path d="M28 50 C8 40, 6 20, 36 12 C66 4, 84 20, 102 30 C120 40, 98 72, 74 66 C50 60,34 58,28 50Z" fill="#A8E6CF" opacity="0.95"/>
+
+  <!-- folded paper cutout layer -->
+  <path d="M120 10 C150 2, 190 8, 214 30 C230 46, 220 70, 190 70 C160 70,136 58,120 46 C110 38,118 18,120 10Z" fill="url(#g1)" filter="url(#f1)" />
+
+  <!-- brand text stylized as cutout -->
+  <g transform="translate(10,8)" fill="#213547" font-family="'Inter', sans-serif" font-weight="700" font-size="22">
+    <text x="0" y="48">brindra</text>
+  </g>
+
+</svg>
