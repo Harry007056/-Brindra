@@ -1,21 +1,12 @@
+import { Inbox } from 'lucide-react';
+
 export default function EmptyState({ message = 'Nothing here yet.' }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center text-text">
-      <svg
-        className="w-24 h-24 mb-4 text-secondary"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0a2 2 0 01-2 2H7a2 2 0 01-2-2v-4a2 2 0 012-2h10a2 2 0 012 2v4z"
-        />
-      </svg>
-      <p className="text-lg">{message}</p>
+    <div className="grid place-items-center rounded-2xl border border-dashed border-[#88C0D0]/40 bg-background-warm-off-white p-8 text-center">
+      <div className="grid h-12 w-12 place-items-center rounded-full bg-primary-soft-sky/20 text-primary-dusty-blue">
+        <Inbox className="h-5 w-5" />
+      </div>
+      <p className="mt-3 text-sm font-medium text-accent-warm-grey">{message}</p>
     </div>
   );
 }

@@ -54,3 +54,24 @@ The app uses React + Vite, Tailwind CSS for utility classes, React Router for na
 - Tailwind configuration extended with theme colours
 
 For additional UI enhancements (empty states, modals, glass morphism) look at the corresponding components. Feel free to customize further.
+
+## Backend Setup (Phase 1)
+
+1. Open a terminal in `backend`.
+2. Copy env file: `copy .env.example .env`
+3. Set `MONGODB_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` in `.env`.
+4. Install packages: `npm install`
+5. Start API: `npm run dev`
+
+### Auth and Workspace API
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `GET /api/workspaces`
+- `POST /api/workspaces`
+- `GET /api/workspaces/:workspaceId/members`
+- `POST /api/workspaces/:workspaceId/invites`
+- `POST /api/workspaces/invites/:token/accept`

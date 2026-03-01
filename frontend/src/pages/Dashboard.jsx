@@ -1,24 +1,24 @@
 import { motion } from 'framer-motion';
-import { 
-  TrendingUp, 
-  Users, 
-  FolderKanban, 
+import {
+  TrendingUp,
+  Users,
+  FolderKanban,
   CheckCircle2,
   Clock,
   ArrowUpRight,
-  Calendar
+  Calendar,
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
 } from 'recharts';
 
 const activityData = [
@@ -32,16 +32,16 @@ const activityData = [
 ];
 
 const projectStatus = [
-  { name: 'Completed', value: 12, color: '#5b8def' },
-  { name: 'In Progress', value: 8, color: '#3d7bd4' },
-  { name: 'Pending', value: 4, color: '#4ade80' },
+  { name: 'Completed', value: 12, color: '#88C0D0' },
+  { name: 'In Progress', value: 8, color: '#5E81AC' },
+  { name: 'Pending', value: 4, color: '#A3BE8C' },
 ];
 
 const stats = [
-  { label: 'Active Projects', value: '24', change: '+12%', icon: FolderKanban, color: 'from-[#5b8def] to-[#3d7bd4]' },
-  { label: 'Team Members', value: '18', change: '+3', icon: Users, color: 'from-[#4ade80] to-[#a78bfa]' },
-  { label: 'Tasks Done', value: '156', change: '+28%', icon: CheckCircle2, color: 'from-[#E07A5F] to-[#D4694F]' },
-  { label: 'Hours Logged', value: '342', change: '+18h', icon: Clock, color: 'from-[#3d7bd4] to-[#5b8def]' },
+  { label: 'Active Projects', value: '24', change: '+12%', icon: FolderKanban, color: 'from-primary-dusty-blue to-primary-soft-sky' },
+  { label: 'Team Members', value: '18', change: '+3', icon: Users, color: 'from-[#A3BE8C] to-[#6B8E23]' },
+  { label: 'Tasks Done', value: '156', change: '+28%', icon: CheckCircle2, color: 'from-[#E07A5F] to-[#E07A5F]' },
+  { label: 'Hours Logged', value: '342', change: '+18h', icon: Clock, color: 'from-[#5E81AC] to-[#88C0D0]' },
 ];
 
 const recentActivity = [
@@ -53,22 +53,18 @@ const recentActivity = [
 
 export default function Dashboard() {
   return (
-    <div className="space-y-10">
-      {/* Header */}
+    <div className="max-w-7xl mx-auto space-y-6">
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="mb-8"
+        className="space-y-1"
       >
-        <h1 className="text-4xl lg:text-5xl font-bold text-[#4C566A] mb-3" style={{ fontFamily: 'Syne, sans-serif' }}>
-          Welcome back, Alex
-        </h1>
-        <p className="text-[#a8a29e] text-lg">Here's what's happening with your team today.</p>
+        <h1 className="text-3xl font-bold text-accent-warm-grey">Welcome back, Alex</h1>
+        <p className="text-text-default">Here's what's happening with your team today.</p>
       </motion.div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -77,78 +73,74 @@ export default function Dashboard() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: index * 0.1 }}
-              className="relative p-8 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/50 overflow-hidden group"
+              className="relative overflow-hidden rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm"
             >
-              {/* Watercolor Effect */}
-              <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-gradient-to-br ${stat.color}`} />
-              
-              <div className="flex items-start justify-between relative z-10">
+              <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.color}`} />
+
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[#a8a29e] text-sm mb-2">{stat.label}</p>
-                  <p className="text-4xl lg:text-5xl font-bold text-[#4C566A]">{stat.value}</p>
+                  <p className="text-sm text-text-default">{stat.label}</p>
+                  <p className="mt-1 text-3xl font-semibold text-accent-warm-grey">{stat.value}</p>
                 </div>
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg flex-shrink-0`}>
-                  <Icon className="w-7 h-7 text-white" />
+                <div className="rounded-xl bg-background-light-sand p-2 text-primary-dusty-blue">
+                  <Icon className="h-5 w-5" />
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-6 text-sm">
-                <span className="text-[#A3BE8C] flex items-center gap-1 font-semibold">
-                  <TrendingUp className="w-4 h-4" />
+
+              <div className="mt-4 flex items-center gap-2 text-sm">
+                <span className="inline-flex items-center gap-1 font-medium text-secondary-olive-accent">
+                  <TrendingUp className="h-4 w-4" />
                   {stat.change}
                 </span>
-                <span className="text-[#a8a29e]">from last week</span>
+                <span className="text-text-default">from last week</span>
               </div>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Activity Chart */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="lg:col-span-2 p-8 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/50"
+          className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-semibold text-[#4C566A]" style={{ fontFamily: 'Syne, sans-serif' }}>
-              Team Activity
-            </h2>
-            <div className="flex items-center gap-6 text-sm">
-              <span className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-[#5E81AC]" />
-                <span className="text-[#8B8E7E]">Tasks</span>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-accent-warm-grey">Team Activity</h2>
+            <div className="flex items-center gap-4 text-xs text-text-default">
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-primary-dusty-blue" />
+                Tasks
               </span>
-              <span className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-[#A3BE8C]" />
-                <span className="text-[#8B8E7E]">Commits</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-secondary-sage-green" />
+                Commits
               </span>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={activityData}>
                 <defs>
                   <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#5b8def" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#5b8def" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#88C0D0" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#88C0D0" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorCommits" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4ade80" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#A3BE8C" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#A3BE8C" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E0DDD4" />
                 <XAxis dataKey="name" stroke="#8B8E7E" fontSize={12} />
                 <YAxis stroke="#8B8E7E" fontSize={12} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#F8F9F6', 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#F8F9F6',
                     border: '1px solid #E0DDD4',
                     borderRadius: '12px',
-                    color: '#4C566A'
+                    color: '#4C566A',
                   }}
                 />
                 <Area type="monotone" dataKey="tasks" stroke="#5E81AC" strokeWidth={2} fill="url(#colorTasks)" />
@@ -158,17 +150,14 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Project Status */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="p-8 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/50"
+          className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm"
         >
-          <h2 className="text-2xl font-semibold text-[#4C566A] mb-8" style={{ fontFamily: 'Syne, sans-serif' }}>
-            Project Status
-          </h2>
-          <div className="h-56">
+          <h2 className="text-lg font-semibold text-accent-warm-grey">Project Status</h2>
+          <div className="mt-2 h-52">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -184,105 +173,102 @@ export default function Dashboard() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#F8F9F6', 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#F8F9F6',
                     border: '1px solid #E0DDD4',
                     borderRadius: '12px',
-                    color: '#4C566A'
+                    color: '#4C566A',
                   }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="space-y-4 mt-8">
+          <div className="space-y-2">
             {projectStatus.map((item) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-[#8B8E7E] text-base">{item.name}</span>
+              <div key={item.name} className="flex items-center justify-between rounded-lg bg-background-light-sand px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-sm text-accent-warm-grey">{item.name}</span>
                 </div>
-                <span className="text-[#4C566A] font-semibold text-base">{item.value}</span>
+                <span className="text-sm font-medium text-accent-warm-grey">{item.value}</span>
               </div>
             ))}
           </div>
         </motion.div>
       </div>
 
-      {/* Recent Activity & Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Activity */}
+      <div className="grid gap-4 lg:grid-cols-3">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="p-8 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/50"
+          className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm lg:col-span-2"
         >
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-semibold text-[#4C566A]" style={{ fontFamily: 'Syne, sans-serif' }}>
-              Recent Activity
-            </h2>
-            <button className="text-[#5E81AC] text-sm flex items-center gap-2 hover:gap-3 transition-all font-medium">
-              View all <ArrowUpRight className="w-4 h-4" />
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-accent-warm-grey">Recent Activity</h2>
+            <button className="inline-flex items-center gap-1 text-sm font-medium text-primary-dusty-blue hover:text-primary-soft-sky">
+              View all <ArrowUpRight className="h-4 w-4" />
             </button>
           </div>
-          <div className="space-y-5">
+          <div className="space-y-3">
             {recentActivity.map((activity, index) => (
               <motion.div
-                key={index}
+                key={activity.user + activity.time}
                 initial={{ x: -10, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.7 + index * 0.1 }}
-                className="flex items-start gap-5 p-4 rounded-xl hover:bg-[#F1F3EE]/50 transition-colors"
+                className="flex items-start gap-3 rounded-xl bg-background-light-sand p-3"
               >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#5E81AC] to-[#88C0D0] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-primary-dusty-blue text-sm font-semibold text-background-warm-off-white">
                   {activity.avatar}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[#4C566A] text-base leading-relaxed">
+                <div>
+                  <p className="text-sm text-accent-warm-grey">
                     <span className="font-semibold">{activity.user}</span>{' '}
-                    <span className="text-[#8B8E7E]">{activity.action}</span>{' '}
-                    <span className="text-[#5E81AC]">{activity.target}</span>
+                    <span className="text-text-default">{activity.action}</span>{' '}
+                    <span className="font-medium">{activity.target}</span>
                   </p>
-                  <p className="text-[#8B8E7E] text-sm mt-2">{activity.time}</p>
+                  <p className="text-xs text-text-default">{activity.time}</p>
                 </div>
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* Upcoming Meetings */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="p-8 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/50"
+          className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-semibold text-[#4C566A]" style={{ fontFamily: 'Syne, sans-serif' }}>
-              Upcoming Meetings
-            </h2>
-            <Calendar className="w-6 h-6 text-[#5E81AC]" />
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-accent-warm-grey">Upcoming Meetings</h2>
+            <Calendar className="h-5 w-5 text-primary-dusty-blue" />
           </div>
-          <div className="space-y-5">
+          <div className="space-y-3">
             {[
-              { title: 'Sprint Planning', time: '10:00 AM', participants: 5, color: 'bg-[#5E81AC]' },
+              { title: 'Sprint Planning', time: '10:00 AM', participants: 5, color: 'bg-primary-dusty-blue' },
               { title: 'Design Review', time: '2:30 PM', participants: 3, color: 'bg-[#A3BE8C]' },
               { title: 'Client Call', time: '4:00 PM', participants: 4, color: 'bg-[#E07A5F]' },
             ].map((meeting, index) => (
               <motion.div
-                key={index}
+                key={meeting.title}
                 initial={{ x: 10, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.8 + index * 0.1 }}
-                className="flex items-center gap-5 p-5 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 hover:border-[#5E81AC]/30 transition-colors"
+                className="flex items-center justify-between rounded-xl bg-background-light-sand p-3"
               >
-                <div className={`w-1 h-14 rounded-full ${meeting.color}`} />
-                <div className="flex-1">
-                  <h3 className="text-[#4C566A] font-semibold text-base">{meeting.title}</h3>
-                  <p className="text-[#8B8E7E] text-sm mt-1">{meeting.time} • {meeting.participants} participants</p>
+                <div className="flex items-center gap-3">
+                  <div className={`h-9 w-1.5 rounded-full ${meeting.color}`} />
+                  <div>
+                    <h3 className="text-sm font-semibold text-accent-warm-grey">{meeting.title}</h3>
+                    <p className="text-xs text-text-default">
+                      {meeting.time} &bull; {meeting.participants} participants
+                    </p>
+                  </div>
                 </div>
-                <button className="px-5 py-2 rounded-lg bg-[#5E81AC]/10 text-[#5E81AC] text-sm font-semibold hover:bg-[#5E81AC]/20 transition-colors flex-shrink-0">
+                <button className="rounded-md bg-primary-dusty-blue px-3 py-1.5 text-xs font-medium text-background-warm-off-white hover:bg-primary-soft-sky">
                   Join
                 </button>
               </motion.div>
@@ -293,3 +279,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

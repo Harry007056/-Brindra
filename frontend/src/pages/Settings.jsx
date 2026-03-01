@@ -1,18 +1,18 @@
 import { motion } from 'framer-motion';
-import { 
-  User, 
-  Bell, 
-  Shield, 
-  Palette, 
-  Globe, 
-  Moon, 
+import {
+  User,
+  Bell,
+  Shield,
+  Palette,
+  Globe,
+  Moon,
   Sun,
   ChevronRight,
   Key,
   Mail,
   Smartphone,
   Monitor,
-  Save
+  Save,
 } from 'lucide-react';
 import { useState } from 'react';
 import { clsx } from 'clsx';
@@ -25,236 +25,203 @@ const settingsSections = [
   { id: 'language', label: 'Language', icon: Globe },
 ];
 
+const accentPalette = ['#5E81AC', '#88C0D0', '#A3BE8C', '#E07A5F', '#5E81AC', '#88C0D0'];
+
 export default function Settings() {
   const [activeSection, setActiveSection] = useState('profile');
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
+  const [accentColor, setAccentColor] = useState('#5E81AC');
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="max-w-7xl mx-auto space-y-6">
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
+        className="space-y-1"
       >
-        <h1 className="text-3xl lg:text-4xl font-bold text-[#4C566A] mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
-          Settings
-        </h1>
-        <p className="text-[#8B8E7E]">Manage your account preferences and settings.</p>
+        <h1 className="text-3xl font-bold text-accent-warm-grey">Settings</h1>
+        <p className="text-text-default">Manage your account preferences and settings.</p>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Settings Navigation */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         <motion.div
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="lg:col-span-1"
+          className="h-fit rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-3 shadow-sm"
         >
-          <div className="p-4 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/50 space-y-2">
+          <div className="space-y-1">
             {settingsSections.map((section) => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
-              
+
               return (
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
                   className={clsx(
-                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all',
+                    'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
                     isActive
-                      ? 'bg-gradient-to-r from-[#E0DDD4]/50 to-transparent text-[#4C566A]'
-                      : 'text-[#a8a29e] hover:text-[#5b8def] hover:bg-[#E0DDD4]/30'
+                      ? 'bg-primary-soft-sky/25 text-[#4C566A] ring-1 ring-primary-soft-sky/40'
+                      : 'text-accent-warm-grey hover:bg-background-light-sand'
                   )}
                 >
-                  <Icon className={clsx(
-                    'w-5 h-5',
-                    isActive ? 'text-[#5b8def]' : ''
-                  )} />
-                  <span className="font-medium">{section.label}</span>
-                  <ChevronRight className={clsx(
-                    'w-4 h-4 ml-auto transition-transform',
-                    isActive ? 'rotate-90' : 'opacity-0'
-                  )} />
+                  <Icon className={clsx('h-4 w-4', isActive ? 'text-primary-dusty-blue' : 'text-text-default')} />
+                  <span className="flex-1">{section.label}</span>
+                  <ChevronRight className={clsx('h-4 w-4', isActive ? 'text-primary-dusty-blue' : 'text-text-default')} />
                 </button>
               );
             })}
           </div>
         </motion.div>
 
-        {/* Settings Content */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="lg:col-span-3 space-y-6"
+          className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-5 shadow-sm"
         >
-          {/* Profile Section */}
           {activeSection === 'profile' && (
-            <>
-              <div className="p-6 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/30">
-                <h2 className="text-xl font-semibold text-[#4C566A] mb-6" style={{ fontFamily: 'Syne, sans-serif' }}>
-                  Profile Information
-                </h2>
-                
-                <div className="flex items-start gap-6 mb-8">
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#5b8def] to-[#3d7bd4] flex items-center justify-center text-white font-bold text-2xl">
-                      AK
-                    </div>
-                    <button className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-[#5b8def] text-white flex items-center justify-center shadow-lg">
-                      <Palette className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div>
-                    <h3 className="text-[#4C566A] font-semibold text-lg">Alex Kim</h3>
-                    <p className="text-[#6b7c94] text-sm mb-3">Product Lead</p>
-                    <p className="text-[#6b7c94] text-sm">
-                      This will be displayed on your profile and in team communications.
-                    </p>
-                  </div>
-                </div>
+            <div className="space-y-5">
+              <h2 className="text-xl font-semibold text-accent-warm-grey">Profile Information</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-[#8B8E7E] text-sm mb-2">Full Name</label>
-                    <input 
-                      type="text"
-                      defaultValue="Alex Kim"
-                      className="w-full px-4 py-3 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 text-[#4C566A] focus:outline-none focus:border-[#5E81AC] transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#8B8E7E] text-sm mb-2">Email Address</label>
-                    <input 
-                      type="email"
-                      defaultValue="alex@brindra.io"
-                      className="w-full px-4 py-3 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 text-[#4C566A] focus:outline-none focus:border-[#5E81AC] transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#8B8E7E] text-sm mb-2">Role</label>
-                    <input 
-                      type="text"
-                      defaultValue="Product Lead"
-                      className="w-full px-4 py-3 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 text-[#4C566A] focus:outline-none focus:border-[#5E81AC] transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#8B8E7E] text-sm mb-2">Location</label>
-                    <input 
-                      type="text"
-                      defaultValue="San Francisco, CA"
-                      className="w-full px-4 py-3 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 text-[#4C566A] focus:outline-none focus:border-[#5E81AC] transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-[#E0DDD4]/30 flex justify-end">
-                  <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#5b8def] to-[#3d7bd4] text-white font-semibold flex items-center gap-2 hover:shadow-lg hover:shadow-blue-500/25 transition-all">
-                    <Save className="w-5 h-5" />
-                    Save Changes
+              <div className="flex flex-col gap-4 rounded-2xl bg-background-light-sand p-4 sm:flex-row sm:items-center">
+                <div className="relative">
+                  <div className="grid h-16 w-16 place-items-center rounded-full bg-primary-dusty-blue text-lg font-semibold text-background-warm-off-white">AK</div>
+                  <button className="absolute -bottom-1 -right-1 rounded-full border border-[#D9E1D7] bg-background-warm-off-white p-1.5 text-primary-dusty-blue shadow-sm">
+                    <Palette className="h-3.5 w-3.5" />
                   </button>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-accent-warm-grey">Alex Kim</h3>
+                  <p className="text-sm text-text-default">Product Lead</p>
+                  <p className="mt-1 text-xs text-text-default">
+                    This will be displayed on your profile and in team communications.
+                  </p>
                 </div>
               </div>
-            </>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  { label: 'Full Name', value: 'Alex Kim', type: 'text' },
+                  { label: 'Email Address', value: 'alex@brindra.io', type: 'email' },
+                  { label: 'Role', value: 'Product Lead', type: 'text' },
+                  { label: 'Location', value: 'San Francisco, CA', type: 'text' },
+                ].map((field) => (
+                  <label key={field.label} className="space-y-1">
+                    <span className="text-xs font-medium text-text-default">{field.label}</span>
+                    <input
+                      type={field.type}
+                      defaultValue={field.value}
+                      className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <div className="pt-1">
+                <button className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
+                  <Save className="h-4 w-4" />
+                  Save Changes
+                </button>
+              </div>
+            </div>
           )}
 
-          {/* Notifications Section */}
           {activeSection === 'notifications' && (
-            <div className="p-6 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/30">
-              <h2 className="text-xl font-semibold text-[#4C566A] mb-6" style={{ fontFamily: 'Syne, sans-serif' }}>
-                Notification Preferences
-              </h2>
+            <div className="space-y-5">
+              <h2 className="text-xl font-semibold text-accent-warm-grey">Notification Preferences</h2>
 
-              <div className="space-y-6">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-[#E0DDD4]/20">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#5b8def]/20 flex items-center justify-center">
-                      <Mail className="w-6 h-6 text-[#5b8def]" />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl bg-background-light-sand p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-lg bg-background-warm-off-white p-2 text-primary-dusty-blue">
+                      <Mail className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-[#4C566A] font-medium">Email Notifications</h3>
-                      <p className="text-[#a8a29e] text-sm">Receive updates via email</p>
+                      <h3 className="text-sm font-semibold text-accent-warm-grey">Email Notifications</h3>
+                      <p className="text-xs text-text-default">Receive updates via email</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setEmailNotifications(!emailNotifications)}
                     className={clsx(
-                      'w-14 h-8 rounded-full transition-colors relative',
-                      emailNotifications ? 'bg-[#5b8def]' : 'bg-[#E0DDD4]'
+                      'relative h-6 w-11 rounded-full transition',
+                      emailNotifications ? 'bg-primary-dusty-blue' : 'bg-slate-300'
                     )}
                   >
-                    <div className={clsx(
-                      'absolute top-1 w-6 h-6 rounded-full bg-white transition-transform',
-                      emailNotifications ? 'translate-x-7' : 'translate-x-1'
-                    )} />
+                    <span
+                      className={clsx(
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-background-warm-off-white shadow transition',
+                        emailNotifications ? 'left-5' : 'left-0.5'
+                      )}
+                    />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl bg-[#E0DDD4]/20">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#4ade80]/20 flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-[#4ade80]" />
+                <div className="flex items-center justify-between rounded-xl bg-background-light-sand p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-lg bg-background-warm-off-white p-2 text-primary-dusty-blue">
+                      <Smartphone className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-[#4C566A] font-medium">Push Notifications</h3>
-                      <p className="text-[#a8a29e] text-sm">Receive updates on your device</p>
+                      <h3 className="text-sm font-semibold text-accent-warm-grey">Push Notifications</h3>
+                      <p className="text-xs text-text-default">Receive updates on your device</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setPushNotifications(!pushNotifications)}
                     className={clsx(
-                      'w-14 h-8 rounded-full transition-colors relative',
-                      pushNotifications ? 'bg-[#5b8def]' : 'bg-[#E0DDD4]'
+                      'relative h-6 w-11 rounded-full transition',
+                      pushNotifications ? 'bg-primary-dusty-blue' : 'bg-slate-300'
                     )}
                   >
-                    <div className={clsx(
-                      'absolute top-1 w-6 h-6 rounded-full bg-white transition-transform',
-                      pushNotifications ? 'translate-x-7' : 'translate-x-1'
-                    )} />
+                    <span
+                      className={clsx(
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-background-warm-off-white shadow transition',
+                        pushNotifications ? 'left-5' : 'left-0.5'
+                      )}
+                    />
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Security Section */}
           {activeSection === 'security' && (
-            <div className="p-6 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/30">
-              <h2 className="text-xl font-semibold text-[#4C566A] mb-6" style={{ fontFamily: 'Syne, sans-serif' }}>
-                Security Settings
-              </h2>
+            <div className="space-y-5">
+              <h2 className="text-xl font-semibold text-accent-warm-grey">Security Settings</h2>
 
-              <div className="space-y-6">
-                <div className="p-4 rounded-xl bg-[#E0DDD4]/20 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#f472b6]/20 flex items-center justify-center">
-                      <Key className="w-6 h-6 text-[#f472b6]" />
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-background-light-sand p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-lg bg-background-warm-off-white p-2 text-primary-dusty-blue">
+                      <Key className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-[#4C566A] font-medium">Password</h3>
-                      <p className="text-[#a8a29e] text-sm">Last changed 30 days ago</p>
+                      <h3 className="text-sm font-semibold text-accent-warm-grey">Password</h3>
+                      <p className="text-xs text-text-default">Last changed 30 days ago</p>
                     </div>
                   </div>
-                  <button className="px-4 py-2 rounded-lg bg-[#E0DDD4]/50 text-[#4C566A] text-sm font-medium hover:bg-[#E0DDD4]/70 transition-colors">
+                  <button className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-1.5 text-sm font-medium text-primary-dusty-blue transition hover:bg-background-warm-off-white">
                     Change
                   </button>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#E0DDD4]/20 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#4ade80]/20 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-[#4ade80]" />
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-background-light-sand p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-lg bg-background-warm-off-white p-2 text-primary-dusty-blue">
+                      <Shield className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-[#4C566A] font-medium">Two-Factor Authentication</h3>
-                      <p className="text-[#a8a29e] text-sm">Add an extra layer of security</p>
+                      <h3 className="text-sm font-semibold text-accent-warm-grey">Two-Factor Authentication</h3>
+                      <p className="text-xs text-text-default">Add an extra layer of security</p>
                     </div>
                   </div>
-                  <button className="px-4 py-2 rounded-lg bg-[#5b8def]/20 text-[#5b8def] text-sm font-medium hover:bg-[#5b8def]/30 transition-colors">
+                  <button className="rounded-lg bg-primary-dusty-blue px-3 py-1.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
                     Enable
                   </button>
                 </div>
@@ -262,55 +229,53 @@ export default function Settings() {
             </div>
           )}
 
-          {/* Appearance Section */}
           {activeSection === 'appearance' && (
-            <div className="p-6 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/30">
-              <h2 className="text-xl font-semibold text-[#4C566A] mb-6" style={{ fontFamily: 'Syne, sans-serif' }}>
-                Appearance
-              </h2>
+            <div className="space-y-5">
+              <h2 className="text-xl font-semibold text-accent-warm-grey">Appearance</h2>
 
-              <div className="space-y-6">
+              <div className="space-y-4 rounded-xl bg-background-light-sand p-4">
                 <div>
-                  <h3 className="text-[#4C566A] font-medium mb-4">Theme</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <button 
+                  <h3 className="mb-2 text-sm font-semibold text-accent-warm-grey">Theme</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
                       onClick={() => setDarkMode(true)}
                       className={clsx(
-                        'p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3',
-                        darkMode 
-                          ? 'border-[#5b8def] bg-[#5b8def]/10' 
-                          : 'border-[#E0DDD4]/30 hover:border-[#5b8def]/50'
+                        'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
+                        darkMode
+                          ? 'border-primary-dusty-blue bg-primary-dusty-blue text-background-warm-off-white'
+                          : 'border-[#88C0D0]/35 bg-background-warm-off-white text-primary-dusty-blue hover:bg-background-warm-off-white'
                       )}
                     >
-                      <Moon className="w-8 h-8 text-[#5b8def]" />
-                      <span className="text-[#4C566A] text-sm font-medium">Dark</span>
+                      <Moon className="h-4 w-4" />
+                      Dark
                     </button>
-                    <button 
+                    <button
                       onClick={() => setDarkMode(false)}
                       className={clsx(
-                        'p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3',
-                        !darkMode 
-                          ? 'border-[#5b8def] bg-[#5b8def]/10' 
-                          : 'border-[#E0DDD4]/30 hover:border-[#5b8def]/50'
+                        'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
+                        !darkMode
+                          ? 'border-primary-dusty-blue bg-primary-dusty-blue text-background-warm-off-white'
+                          : 'border-[#88C0D0]/35 bg-background-warm-off-white text-primary-dusty-blue hover:bg-background-warm-off-white'
                       )}
                     >
-                      <Sun className="w-8 h-8 text-[#fbbf24]" />
-                      <span className="text-[#4C566A] text-sm font-medium">Light</span>
+                      <Sun className="h-4 w-4" />
+                      Light
                     </button>
-                    <button className="p-4 rounded-xl border-2 border-[#E0DDD4]/30 hover:border-[#5b8def]/50 transition-all flex flex-col items-center gap-3">
-                      <Monitor className="w-8 h-8 text-[#a78bfa]" />
-                      <span className="text-[#4C566A] text-sm font-medium">System</span>
+                    <button className="inline-flex items-center gap-2 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-primary-dusty-blue transition hover:bg-background-warm-off-white">
+                      <Monitor className="h-4 w-4" />
+                      System
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-[#4C566A] font-medium mb-4">Accent Color</h3>
-                  <div className="flex gap-3">
-                    {['#5b8def', '#4ade80', '#f472b6', '#fbbf24', '#a78bfa', '#22d3ee'].map((color) => (
+                  <h3 className="mb-2 text-sm font-semibold text-accent-warm-grey">Accent Color</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {accentPalette.map((color) => (
                       <button
                         key={color}
-                        className="w-10 h-10 rounded-xl hover:scale-110 transition-transform"
+                        onClick={() => setAccentColor(color)}
+                        className={clsx('h-7 w-7 rounded-full border-2 transition', accentColor === color ? 'border-accent-warm-grey scale-110' : 'border-[#D9E1D7]')}
                         style={{ backgroundColor: color }}
                       />
                     ))}
@@ -320,17 +285,14 @@ export default function Settings() {
             </div>
           )}
 
-          {/* Language Section */}
           {activeSection === 'language' && (
-            <div className="p-6 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/30">
-              <h2 className="text-xl font-semibold text-[#4C566A] mb-6" style={{ fontFamily: 'Syne, sans-serif' }}>
-                Language & Region
-              </h2>
+            <div className="space-y-5">
+              <h2 className="text-xl font-semibold text-accent-warm-grey">Language & Region</h2>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[#a8a29e] text-sm mb-2">Display Language</label>
-                  <select className="w-full px-4 py-3 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 text-[#4C566A] focus:outline-none focus:border-[#5b8def] transition-colors">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-text-default">Display Language</span>
+                  <select className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30">
                     <option>English (US)</option>
                     <option>English (UK)</option>
                     <option>Spanish</option>
@@ -338,32 +300,32 @@ export default function Settings() {
                     <option>German</option>
                     <option>Japanese</option>
                   </select>
-                </div>
+                </label>
 
-                <div>
-                  <label className="block text-[#a8a29e] text-sm mb-2">Time Zone</label>
-                  <select className="w-full px-4 py-3 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 text-[#4C566A] focus:outline-none focus:border-[#5b8def] transition-colors">
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-text-default">Time Zone</span>
+                  <select className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30">
                     <option>Pacific Time (PT)</option>
                     <option>Mountain Time (MT)</option>
                     <option>Central Time (CT)</option>
                     <option>Eastern Time (ET)</option>
                     <option>UTC</option>
                   </select>
-                </div>
+                </label>
 
-                <div>
-                  <label className="block text-[#a8a29e] text-sm mb-2">Date Format</label>
-                  <select className="w-full px-4 py-3 rounded-xl bg-[#F1F3EE]/50 border border-[#E0DDD4]/50 text-[#4C566A] focus:outline-none focus:border-[#5b8def] transition-colors">
+                <label className="space-y-1 sm:col-span-2">
+                  <span className="text-xs font-medium text-text-default">Date Format</span>
+                  <select className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30">
                     <option>MM/DD/YYYY</option>
                     <option>DD/MM/YYYY</option>
                     <option>YYYY-MM-DD</option>
                   </select>
-                </div>
+                </label>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-[#E0DDD4]/30 flex justify-end">
-                <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#5b8def] to-[#3d7bd4] text-white font-semibold flex items-center gap-2 hover:shadow-lg hover:shadow-blue-500/25 transition-all">
-                  <Save className="w-5 h-5" />
+              <div className="pt-1">
+                <button className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
+                  <Save className="h-4 w-4" />
                   Save Changes
                 </button>
               </div>

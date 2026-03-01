@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Search, Mail, MoreVertical, MapPin, Calendar, Github, Linkedin } from 'lucide-react';
+import { Search, Mail, MoreVertical, MapPin, Github, Linkedin } from 'lucide-react';
 
 const teamMembers = [
   { 
@@ -11,7 +11,7 @@ const teamMembers = [
     avatar: 'SC',
     status: 'online',
     skills: ['Figma', 'Sketch', 'User Research'],
-    color: 'from-[#E07A5F] to-[#D4694F]'
+    color: 'from-[#E07A5F] to-[#E07A5F]'
   },
   { 
     id: 2, 
@@ -22,7 +22,7 @@ const teamMembers = [
     avatar: 'MR',
     status: 'online',
     skills: ['React', 'TypeScript', 'CSS'],
-    color: 'from-[#5b8def] to-[#3d7bd4]'
+    color: 'from-primary-dusty-blue to-primary-soft-sky'
   },
   { 
     id: 3, 
@@ -33,7 +33,7 @@ const teamMembers = [
     avatar: 'ED',
     status: 'away',
     skills: ['Agile', 'Jira', 'Strategy'],
-    color: 'from-[#4ade80] to-[#a78bfa]'
+    color: 'from-[#A3BE8C] to-[#6B8E23]'
   },
   { 
     id: 4, 
@@ -44,7 +44,7 @@ const teamMembers = [
     avatar: 'JL',
     status: 'offline',
     skills: ['Node.js', 'Python', 'AWS'],
-    color: 'from-[#3d7bd4] to-[#5b8def]'
+    color: 'from-[#5E81AC] to-[#88C0D0]'
   },
   { 
     id: 5, 
@@ -55,7 +55,7 @@ const teamMembers = [
     avatar: 'AG',
     status: 'online',
     skills: ['Docker', 'Kubernetes', 'CI/CD'],
-    color: 'from-[#4ade80] to-[#a78bfa]'
+    color: 'from-[#A3BE8C] to-[#6B8E23]'
   },
   { 
     id: 6, 
@@ -66,105 +66,107 @@ const teamMembers = [
     avatar: 'DP',
     status: 'online',
     skills: ['Python', 'SQL', 'Tableau'],
-    color: 'from-[#3d7bd4] to-[#5b8def]'
+    color: 'from-[#5E81AC] to-[#88C0D0]'
   },
 ];
 
-export default function TeamMembers() {
+export default function TeamMembers({ setActiveView }) {
+  const getStatusClass = (status) => {
+    if (status === 'online') return 'bg-secondary-sage-green';
+    if (status === 'away') return 'bg-accent-muted-coral';
+    return 'bg-slate-300';
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="max-w-7xl mx-auto space-y-6">
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
       >
-        <div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-[#4C566A] mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
-            Team Members
-          </h1>
-          <p className="text-[#8B8E7E]">Manage your team and collaborate effectively.</p>
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold text-accent-warm-grey">Team Members</h1>
+          <p className="text-text-default">Manage your team and collaborate effectively.</p>
         </div>
-        
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B8E7E]" />
-          <input 
+
+        <div className="relative w-full sm:w-80">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-dusty-blue" />
+          <input
             type="text"
             placeholder="Search team members..."
-            className="w-full sm:w-72 pl-12 pr-4 py-3 rounded-xl bg-[#F8F9F6] border border-[#E0DDD4]/50 text-[#4C566A] placeholder-[#8B8E7E] focus:outline-none focus:border-[#5b8def] transition-colors"
+            className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white py-2.5 pl-10 pr-3 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
           />
         </div>
       </motion.div>
 
-      {/* Team Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {teamMembers.map((member, index) => (
           <motion.div
             key={member.id}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: index * 0.1 }}
-            className="p-6 rounded-2xl bg-[#F8F9F6] border border-[#E0DDD4]/50 hover:border-[#5b8def]/30 transition-all duration-300 group"
+            className="relative overflow-hidden rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm"
           >
-            {/* Top Section */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-4">
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${member.color}`} />
+
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${member.color} flex items-center justify-center text-[#4C566A] font-bold text-lg shadow-lg`}>
+                  <div className={`grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br ${member.color} text-sm font-semibold text-background-warm-off-white`}>
                     {member.avatar}
                   </div>
-                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#E0DDD4] ${
-                    member.status === 'online' ? 'bg-[#4ade80]' :
-                    member.status === 'away' ? 'bg-[#fbbf24]' : 'bg-[#8B8E7E]'
-                  }`} />
+                  <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white ${getStatusClass(member.status)}`} />
                 </div>
                 <div>
-                  <h3 className="text-[#4C566A] font-semibold text-lg">{member.name}</h3>
-                  <p className="text-[#5E81AC] text-sm">{member.role}</p>
+                  <h3 className="text-base font-semibold text-accent-warm-grey">{member.name}</h3>
+                  <p className="text-sm text-text-default">{member.role}</p>
                 </div>
               </div>
-              <button className="p-2 rounded-lg hover:bg-[#F1F3EE]/50 text-[#8B8E7E] hover:text-[#4C566A] transition-colors">
-                <MoreVertical className="w-5 h-5" />
+              <button className="rounded-lg p-1.5 text-text-default transition hover:bg-background-light-sand hover:text-accent-warm-grey">
+                <MoreVertical className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Info */}
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-[#8B8E7E] text-sm">
-                <Mail className="w-4 h-4" />
-                {member.email}
+            <div className="mt-4 space-y-2 rounded-xl bg-background-light-sand p-3">
+              <div className="flex items-center gap-2 text-sm text-text-default">
+                <Mail className="h-4 w-4 text-primary-dusty-blue" />
+                <span className="truncate">{member.email}</span>
               </div>
-              <div className="flex items-center gap-2 text-[#8B8E7E] text-sm">
-                <MapPin className="w-4 h-4" />
-                {member.location}
+              <div className="flex items-center gap-2 text-sm text-text-default">
+                <MapPin className="h-4 w-4 text-primary-dusty-blue" />
+                <span>{member.location}</span>
               </div>
             </div>
 
-            {/* Skills */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="mt-4 flex flex-wrap gap-2">
               {member.skills.map((skill) => (
-                <span 
+                <span
                   key={skill}
-                  className="px-3 py-1 rounded-lg bg-[#E0DDD4]/50 text-[#8B8E7E] text-xs font-medium"
+                  className="rounded-full border border-[#88C0D0]/35 bg-[#F8F9F6] px-2.5 py-1 text-xs font-medium text-primary-dusty-blue"
                 >
                   {skill}
                 </span>
               ))}
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 pt-4 border-t border-[#E0DDD4]/50">
-              <button className="flex-1 py-2 rounded-lg bg-[#5E81AC]/20 text-[#5E81AC] text-sm font-medium hover:bg-[#5E81AC]/30 transition-colors flex items-center justify-center gap-2">
-                <Mail className="w-4 h-4" />
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary-dusty-blue px-3 py-2 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
+                onClick={() => {
+                  localStorage.setItem('chatTarget', member.name);
+                  setActiveView('chat');
+                }}
+              >
+                <Mail className="h-4 w-4" />
                 Message
               </button>
-              <button className="p-2 rounded-lg bg-[#E0DDD4]/50 text-[#8B8E7E] hover:text-[#4C566A] hover:bg-[#E0DDD4]/50 transition-colors">
-                <Github className="w-4 h-4" />
+              <button className="rounded-lg border border-[#88C0D0]/35 p-2 text-primary-dusty-blue transition hover:bg-background-light-sand">
+                <Github className="h-4 w-4" />
               </button>
-              <button className="p-2 rounded-lg bg-[#E0DDD4]/50 text-[#8B8E7E] hover:text-[#4C566A] hover:bg-[#E0DDD4]/50 transition-colors">
-                <Linkedin className="w-4 h-4" />
+              <button className="rounded-lg border border-[#88C0D0]/35 p-2 text-primary-dusty-blue transition hover:bg-background-light-sand">
+                <Linkedin className="h-4 w-4" />
               </button>
             </div>
           </motion.div>
@@ -173,3 +175,5 @@ export default function TeamMembers() {
     </div>
   );
 }
+
+
