@@ -1,4 +1,6 @@
-# -Brindra
+# Brindra
+
+**Brindra** is a modern collaboration platform combining project management, real-time chat, and team organization in a nature‑inspired UI. It provides workspaces, kanban-style boards, messaging, file sharing, and customizable settings to keep teams productive and connected.
 
 ## 🌿 Soft Blue Nature Theme
 

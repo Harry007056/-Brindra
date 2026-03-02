@@ -7,11 +7,17 @@ import api, { setAuthTokens } from '../api';
 
 export default function Register({ onRegisterSuccess, onLoginClick }) {
   const navigate = useNavigate();
+  const roleOptions = [
+    { value: 'team_leader', label: 'Team Leader' },
+    { value: 'manager', label: 'Manager' },
+    { value: 'member', label: 'Member' },
+  ];
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
+  const [role, setRole] = useState('team_leader');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -32,6 +38,7 @@ export default function Register({ onRegisterSuccess, onLoginClick }) {
         email: email.trim(),
         password: password.trim(),
         workspaceName: workspaceName.trim(),
+        role,
       });
 
       const token =
@@ -134,6 +141,22 @@ export default function Register({ onRegisterSuccess, onLoginClick }) {
                 placeholder="Design Team"
                 className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
               />
+            </label>
+
+            <label className="block space-y-1">
+              <span className="text-xs font-medium text-text-default">Role</span>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                required
+              >
+                {roleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label className="block space-y-1">

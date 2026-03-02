@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Moon, Sun } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import api, { clearAuthTokens, getAccessToken, getRefreshToken } from './api';
@@ -29,7 +30,7 @@ const pageRegistry = {
   projects: { label: 'Projects', component: Projects, protected: true, group: 'primary' },
   messages: { label: 'Messages', component: Messages, protected: true, group: 'primary' },
   files: { label: 'Files', component: Files, protected: true, group: 'primary' },
-  settings: { label: 'Settings', component: Settings, protected: true, group: 'primary', roles: ['admin', 'manager'] },
+  settings: { label: 'Settings', component: Settings, protected: true, group: 'primary', roles: ['team_leader', 'manager'] },
   home: { label: 'Home', component: Home, protected: false, group: 'extra' },
   features: { label: 'Features', component: Features, protected: false, group: 'extra' },
   pricing: { label: 'Pricing', component: Pricing, protected: false, group: 'extra' },
@@ -43,6 +44,15 @@ const pageRegistry = {
   register: { label: 'Register', protected: false, group: 'extra' },
 };
 
+const THEME_STORAGE_KEY = 'brindra-theme';
+
+const resolveInitialTheme = () => {
+  if (typeof window === 'undefined') return 'light';
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getAccessToken()));
   const [activeView, setActiveView] = useState(() => (getAccessToken() ? 'dashboard' : 'landing'));
@@ -51,6 +61,7 @@ export default function App() {
   const [userWorkspaces, setUserWorkspaces] = useState([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(() => localStorage.getItem('activeWorkspaceId') || '');
   const [activeRole, setActiveRole] = useState(null);
+  const [theme, setTheme] = useState(resolveInitialTheme);
 
   const visibleExtraViews = useMemo(
     () =>
@@ -105,6 +116,11 @@ export default function App() {
   useEffect(() => {
     hydrateSession();
   }, [hydrateSession]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
@@ -196,7 +212,7 @@ export default function App() {
       return <Home onRegisterClick={goToRegister} setActiveView={setActiveView} />;
     }
 
-    return <ActiveComponent setActiveView={setActiveView} />;
+    return <ActiveComponent setActiveView={setActiveView} userName={authUser?.name} authUser={authUser} />;
   };
 
   const pageLoadingState = (
@@ -208,7 +224,6 @@ export default function App() {
   return (
     <div className="flex min-h-screen relative">
       <div className="overlay" />
-
       {isAuthenticated && (
         <Sidebar
           activeView={activeView}
@@ -238,6 +253,14 @@ export default function App() {
                     {page.label}
                   </button>
                 ))}
+                {activeView !== 'dashboard' && (
+                  <button
+                    onClick={() => setActiveView('dashboard')}
+                    className="rounded-full bg-primary-dusty-blue px-3 py-1.5 text-xs font-medium text-background-warm-off-white hover:bg-primary-soft-sky"
+                  >
+                    Back to Dashboard
+                  </button>
+                )}
                 {userWorkspaces.length > 0 && (
                   <select
                     value={selectedWorkspaceId}
@@ -256,6 +279,14 @@ export default function App() {
                   className="rounded-full bg-accent-muted-coral/15 px-3 py-1.5 text-xs font-medium text-accent-muted-coral hover:bg-accent-muted-coral/25"
                 >
                   Logout
+                </button>
+                <button
+                  onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+                  className="ml-auto inline-flex items-center gap-2 rounded-full border border-[#88C0D0]/35 bg-background-light-sand px-3 py-1.5 text-xs font-medium text-primary-dusty-blue shadow-sm transition hover:bg-background-warm-off-white"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                 </button>
               </div>
             </section>

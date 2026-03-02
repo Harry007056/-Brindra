@@ -37,7 +37,12 @@ function getInitials(name = 'User') {
 
 export default function Sidebar({ activeView, setActiveView, userName, activeRole, workspaceName }) {
   const initials = getInitials(userName || 'User');
-  const roleLabel = activeRole ? `${activeRole[0].toUpperCase()}${activeRole.slice(1)}` : 'Member';
+  const roleLabel = activeRole
+    ? activeRole
+        .split('_')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ')
+    : 'Member';
 
   return (
     <motion.aside

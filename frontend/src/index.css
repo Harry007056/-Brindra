@@ -1,12 +1,32 @@
 @import "tailwindcss";
 
+:root {
+  --bg-app: #f1f3ee;
+  --bg-surface: #f8f9f6;
+  --bg-soft: #eef1ea;
+  --text-main: #4c566a;
+  --text-muted: #5f697c;
+  --border-soft: #d9e1d7;
+  --border-accent: rgba(136, 192, 208, 0.35);
+}
+
+[data-theme='dark'] {
+  --bg-app: #0f1724;
+  --bg-surface: #182235;
+  --bg-soft: #22314a;
+  --text-main: #e6edf7;
+  --text-muted: #b7c5dd;
+  --border-soft: #33465f;
+  --border-accent: rgba(136, 192, 208, 0.4);
+}
+
 @layer base {
   html,
   body,
   #root {
     min-height: 100vh;
-    background-color: #F1F3EE;
-    color: #4C566A;
+    background-color: var(--bg-app);
+    color: var(--text-main);
   }
 }
 
@@ -16,4 +36,41 @@
     @apply fixed inset-0 pointer-events-none bg-center bg-cover opacity-5;
     background-image: url('/leaf-pattern.svg');
   }
+}
+
+[data-theme='dark'] .overlay {
+  opacity: 0.03;
+  filter: brightness(0.65) contrast(1.1);
+}
+
+[data-theme='dark'] .bg-background-light-sand {
+  background-color: var(--bg-app) !important;
+}
+
+[data-theme='dark'] .bg-background-warm-off-white {
+  background-color: var(--bg-surface) !important;
+}
+
+[data-theme='dark'] .text-accent-warm-grey,
+[data-theme='dark'] .text-text-default {
+  color: var(--text-main) !important;
+}
+
+[data-theme='dark'] [class*='text-text-default'] {
+  color: var(--text-muted) !important;
+}
+
+[data-theme='dark'] [class*='border-[#D9E1D7]'],
+[data-theme='dark'] [class*='border-[#88C0D0]'] {
+  border-color: var(--border-soft) !important;
+}
+
+[data-theme='dark'] [class*='bg-[#F8F9F6]'] {
+  background-color: var(--bg-surface) !important;
+}
+
+[data-theme='dark'] .shadow-sm,
+[data-theme='dark'] .shadow-md,
+[data-theme='dark'] .shadow-xl {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28) !important;
 }

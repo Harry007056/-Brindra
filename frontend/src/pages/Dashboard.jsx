@@ -51,7 +51,9 @@ const recentActivity = [
   { user: 'James Lee', action: 'created new project', target: 'Mobile App v2.0', time: '3 hours ago', avatar: 'JL' },
 ];
 
-export default function Dashboard() {
+export default function Dashboard({ userName }) {
+  const displayName = String(userName || '').trim() || 'there';
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <motion.div
@@ -60,7 +62,7 @@ export default function Dashboard() {
         transition={{ duration: 0.5 }}
         className="space-y-1"
       >
-        <h1 className="text-3xl font-bold text-accent-warm-grey">Welcome back, Alex</h1>
+        <h1 className="text-3xl font-bold text-accent-warm-grey">Welcome back, {displayName}</h1>
         <p className="text-text-default">Here's what's happening with your team today.</p>
       </motion.div>
 
