@@ -1,79 +1,184 @@
 # Brindra
 
-**Brindra** is a modern collaboration platform combining project management, real-time chat, and team organization in a nature‑inspired UI. It provides workspaces, kanban-style boards, messaging, file sharing, and customizable settings to keep teams productive and connected.
+Brindra is a full-stack team collaboration platform for project management, messaging, files, and workspace settings. It includes role-based access, plan-based feature gating, real-time chat signals, and a modern React UI.
 
-## 🌿 Soft Blue Nature Theme
+## Tech Stack
 
-This project uses a calming, modern workspace theme inspired by nature. Key characteristics:
+- Frontend: React 19, Vite 8, Tailwind CSS 4, Framer Motion, Axios, React Toastify, Recharts, Socket.IO client
+- Backend: Node.js, Express 5, Mongoose, JWT auth, bcrypt, Socket.IO
+- Database: MongoDB
 
-- **Primary Color:** Soft Sky Blue (#4A90E2)
-- **Secondary Color:** Light Teal / Mint Green (#A8E6CF)
-- **Accent:** Leaf Green (#6B8E23)
-- **Background:** Very light blue/white gradient with subtle leaf pattern
-- **Typography:** Inter font
-- **UI Elements:** Rounded buttons (12px radius), soft shadows, minimalistic cards with glass effect
-- **Interactions:** Smooth hover animations, gentle transforms
-- **Icons:** Feather or Heroicons style recommended
+## Features
 
-Use the CSS variables defined in `frontend/src/index.css` to maintain theme consistency. Feel free to extend with more nature-inspired assets such as wave shapes or leaf overlays.
+- Authentication with access/refresh token flow
+- Role-aware UI controls (`team_leader`, `manager`, `member`)
+- Plan-aware feature access (`demo`, `starter`, `growth`, `enterprise`)
+- Project, task, message, and file collaboration modules
+- User profile and settings management
+- Theme and accent customization
+- Real-time typing and message events with Socket.IO
 
-### 🚀 Running the Frontend
+## Repository Structure
 
-1. Navigate to the `frontend` folder:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies (if not already done):
-   ```bash
-   npm install
-   ```
-3. Start development server:
-   ```bash
-   npm run dev
-   ```
+```text
+.
+|- frontend/        # React + Vite client
+|- Backend/         # Express + MongoDB API
+`- README.md
+```
 
-The app uses React + Vite, Tailwind CSS for utility classes, React Router for navigation, Axios for API calls, and React Toastify for notifications.
+## Prerequisites
 
-### 🧱 Project Structure
+- Node.js 18+ (recommended)
+- npm 9+
+- MongoDB instance (local or cloud)
 
-- `src/pages/` – individual route components (Login, Dashboard, Projects, etc.)
-- `src/components/` – shared UI pieces like `Layout`, `Spinner`
-- `src/api.js` – axios instance with base URL and auth interceptor
-- `src/index.css` – global styles with Tailwind directives and theme variables
+## Environment Variables
 
-### 🛠️ Features Implemented
+### Backend (`Backend/.env`)
 
-- Authentication pages with API integration stubs
-- Dashboard with animated stats and quick actions
-- Projects page supporting kanban/list view, task cards with avatars and progress
-- Teams page showing member cards with avatars, roles, status and actions
-- Chat page with conversation list, message bubbles, file/emoji buttons, typing indicator
-- Profile page with editable fields, photo, activity history, security section
-- Settings page with account preferences, notifications, privacy, theme, and security toggles
-- Sidebar navigation including Settings
-- Toast notifications and loading states
-- API config file (`api.js`)
-- Tailwind configuration extended with theme colours
+```env
+MONGO_URI=mongodb://127.0.0.1:27017/brindra
+PORT=5000
+JWT_SECRET=replace_with_secure_access_secret
+JWT_REFRESH_SECRET=replace_with_secure_refresh_secret
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+```
 
-For additional UI enhancements (empty states, modals, glass morphism) look at the corresponding components. Feel free to customize further.
+### Frontend (`frontend/.env`, optional)
 
-## Backend Setup (Phase 1)
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+```
 
-1. Open a terminal in `backend`.
-2. Copy env file: `copy .env.example .env`
-3. Set `MONGODB_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` in `.env`.
-4. Install packages: `npm install`
-5. Start API: `npm run dev`
+If `VITE_API_BASE_URL` is not set, frontend defaults to `http://localhost:5000/api`.
 
-### Auth and Workspace API
+## Local Setup
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-- `POST /api/auth/logout`
-- `GET /api/auth/me`
-- `GET /api/workspaces`
-- `POST /api/workspaces`
-- `GET /api/workspaces/:workspaceId/members`
-- `POST /api/workspaces/:workspaceId/invites`
-- `POST /api/workspaces/invites/:token/accept`
+### 1) Install dependencies
+
+```bash
+cd Backend
+npm install
+
+cd ../frontend
+npm install
+```
+
+### 2) Start backend
+
+```bash
+cd Backend
+npm run dev
+```
+
+Backend runs on `http://localhost:5000` by default.
+
+### 3) Start frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend runs on Vite default port (usually `http://localhost:5173`).
+
+## Available Scripts
+
+### Backend (`Backend/package.json`)
+
+- `npm run dev` - Start API with nodemon
+- `npm start` - Start API with node
+- `npm run seed:brindra` - Seed sample users/projects/tasks/messages/files
+
+### Frontend (`frontend/package.json`)
+
+- `npm run dev` - Start Vite dev server
+- `npm run build` - Build production assets
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## API Overview
+
+Base URL: `http://localhost:5000/api`
+
+### Health
+
+- `GET /health`
+
+### Auth
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/me`
+- `GET /auth/settings`
+- `PUT /auth/settings`
+- `PUT /auth/change-password`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+
+### Collaboration
+
+- `POST /collab/users`
+- `GET /collab/users`
+- `POST /collab/projects`
+- `GET /collab/projects`
+- `POST /collab/tasks`
+- `GET /collab/tasks`
+- `PUT /collab/tasks/:id`
+- `POST /collab/messages`
+- `GET /collab/messages`
+- `POST /collab/files`
+- `GET /collab/files`
+- `DELETE /collab/files/:id`
+
+## Real-Time Events (Socket.IO)
+
+### Client emits
+
+- `join_project`
+- `leave_project`
+- `join_user`
+- `leave_user`
+- `project_typing`
+- `direct_typing`
+
+### Server emits
+
+- `project_typing`
+- `direct_typing`
+- `project_message:new`
+- `direct_message:new`
+
+## Authentication Notes
+
+- API expects `Authorization: Bearer <access_token>` for protected endpoints.
+- Frontend stores session tokens and automatically attempts refresh on `401`.
+
+## CORS
+
+Backend currently allows origins matching:
+
+- `http://localhost:<port>`
+- `http://127.0.0.1:<port>`
+
+## Seed Data
+
+Run:
+
+```bash
+cd Backend
+npm run seed:brindra
+```
+
+This creates sample users, projects, tasks, messages, and files for quick testing.
+
+## Current Status
+
+- Project is actively developed.
+- No automated test suite is configured yet in backend (`npm test` placeholder).
+
+## License
+
+No explicit project license is defined yet. Add a `LICENSE` file to set usage terms.
