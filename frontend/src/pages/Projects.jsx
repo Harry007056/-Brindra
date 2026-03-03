@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -11,53 +11,8 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-
-const projects = [
-  {
-    id: 1,
-    name: 'Website Redesign',
-    description: 'Complete overhaul of the company website with new branding',
-    progress: 75,
-    status: 'in-progress',
-    dueDate: 'Dec 15, 2024',
-    team: ['SC', 'MR', 'ED'],
-    tasks: { total: 24, completed: 18 },
-    color: 'from-primary-dusty-blue to-primary-soft-sky',
-  },
-  {
-    id: 2,
-    name: 'Mobile App v2.0',
-    description: 'Next generation mobile application with new features',
-    progress: 45,
-    status: 'in-progress',
-    dueDate: 'Jan 20, 2025',
-    team: ['JL', 'AG', 'DP'],
-    tasks: { total: 32, completed: 14 },
-    color: 'from-[#A3BE8C] to-[#6B8E23]',
-  },
-  {
-    id: 3,
-    name: 'API Integration',
-    description: 'Third-party API integrations for data synchronization',
-    progress: 90,
-    status: 'review',
-    dueDate: 'Dec 5, 2024',
-    team: ['MR', 'JL'],
-    tasks: { total: 12, completed: 11 },
-    color: 'from-[#E07A5F] to-[#E07A5F]',
-  },
-  {
-    id: 4,
-    name: 'Marketing Campaign',
-    description: 'Q4 marketing campaign for product launch',
-    progress: 100,
-    status: 'completed',
-    dueDate: 'Nov 30, 2024',
-    team: ['ED', 'SC'],
-    tasks: { total: 20, completed: 20 },
-    color: 'from-[#5E81AC] to-[#88C0D0]',
-  },
-];
+import { toast } from 'react-toastify';
+import api from '../api';
 
 const filters = ['All', 'In Progress', 'Review', 'Completed', 'On Hold'];
 
@@ -70,12 +25,157 @@ const statusClasses = {
 
 const avatarPalette = ['bg-primary-dusty-blue', 'bg-secondary-sage-green', 'bg-accent-muted-coral', 'bg-[#88C0D0]'];
 
-export default function Projects({ setActiveView }) {
+const initials = (name) =>
+  String(name || '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'NA';
+
+const calcProjectStatus = (project, projectTasks) => {
+  if (project.status === 'archived') return 'on-hold';
+  if (!projectTasks.length) return 'review';
+  const done = projectTasks.filter((task) => task.completed).length;
+  if (done === projectTasks.length) return 'completed';
+  if (done > 0) return 'in-progress';
+  return 'review';
+};
+
+const getDueDate = (projectTasks) => {
+  const datedTasks = projectTasks.filter((task) => task.dueDate).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  if (!datedTasks.length) return 'No due date';
+  return new Date(datedTasks[0].dueDate).toLocaleDateString();
+};
+
+export default function Projects({ setActiveView, authUser }) {
   const [activeFilter, setActiveFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const [projectsRes, tasksRes, usersRes] = await Promise.all([
+          api.get('/collab/projects'),
+          api.get('/collab/tasks'),
+          api.get('/collab/users'),
+        ]);
+
+        if (!isMounted) return;
+        setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+        setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
+        setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+      } catch {
+        if (!isMounted) return;
+        setError('Failed to load projects');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const userById = useMemo(() => {
+    return users.reduce((acc, user) => {
+      acc[String(user._id)] = user;
+      return acc;
+    }, {});
+  }, [users]);
+
+  const tasksByProject = useMemo(() => {
+    return tasks.reduce((acc, task) => {
+      const key = String(task.projectId || '');
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(task);
+      return acc;
+    }, {});
+  }, [tasks]);
+
+  const mappedProjects = useMemo(() => {
+    return projects.map((project) => {
+      const projectTasks = tasksByProject[String(project._id)] || [];
+      const completed = projectTasks.filter((task) => task.completed).length;
+      const total = projectTasks.length;
+      const progress = total ? Math.round((completed / total) * 100) : 0;
+      const status = calcProjectStatus(project, projectTasks);
+
+      const assigneeIds = [...new Set(projectTasks.map((task) => String(task.assigneeId || '')).filter(Boolean))];
+      const team = assigneeIds
+        .map((id) => userById[id]?.name)
+        .filter(Boolean)
+        .slice(0, 3)
+        .map(initials);
+
+      if (!team.length && project.ownerId) {
+        team.push(initials(userById[String(project.ownerId)]?.name || 'Owner'));
+      }
+
+      return {
+        id: String(project._id),
+        name: project.name,
+        description: project.description || 'No description',
+        progress,
+        status,
+        dueDate: getDueDate(projectTasks),
+        team,
+        tasks: { total, completed },
+        color:
+          status === 'completed'
+            ? 'from-[#5E81AC] to-[#88C0D0]'
+            : status === 'on-hold'
+              ? 'from-[#A3BE8C] to-[#6B8E23]'
+              : status === 'review'
+                ? 'from-[#E07A5F] to-[#E07A5F]'
+                : 'from-primary-dusty-blue to-primary-soft-sky',
+      };
+    });
+  }, [projects, tasksByProject, userById]);
 
   const normalizedFilter = activeFilter.toLowerCase().replace(/\s+/g, '-');
-  const visibleProjects =
-    normalizedFilter === 'all' ? projects : projects.filter((project) => project.status === normalizedFilter);
+  const visibleProjects = mappedProjects.filter((project) => {
+    const matchesFilter = normalizedFilter === 'all' ? true : project.status === normalizedFilter;
+    const matchesSearch = project.name.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const handleCreateProject = async () => {
+    const name = window.prompt('Enter project name');
+    if (!name || !name.trim()) return;
+    const description = window.prompt('Enter project description (optional)') || '';
+
+    try {
+      const response = await api.post('/collab/projects', {
+        name: name.trim(),
+        description: description.trim(),
+        status: 'active',
+        ownerId: authUser?.id || null,
+      });
+
+      const created = response.data;
+      if (created?._id) {
+        setProjects((prev) => [created, ...prev]);
+      } else {
+        const refresh = await api.get('/collab/projects');
+        setProjects(Array.isArray(refresh.data) ? refresh.data : []);
+      }
+      toast.success('Project created successfully');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to create project');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -87,14 +187,20 @@ export default function Projects({ setActiveView }) {
       >
         <div className="space-y-1">
           <h1 className="text-3xl font-bold text-accent-warm-grey">Projects</h1>
-          <p className="text-text-default">Track and manage your team's projects.</p>
+          <p className="text-text-default">Track and manage your team&apos;s projects.</p>
         </div>
 
-        <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
+        <button
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
+          type="button"
+          onClick={handleCreateProject}
+        >
           <Plus className="h-4 w-4" />
           New Project
         </button>
       </motion.div>
+
+      {error && <p className="rounded-xl border border-[#E07A5F]/40 bg-[#E07A5F]/10 px-3 py-2 text-sm text-[#4C566A]">{error}</p>}
 
       <motion.div
         initial={{ y: 20, opacity: 0 }}
@@ -117,6 +223,7 @@ export default function Projects({ setActiveView }) {
                       ? 'border-primary-dusty-blue bg-primary-dusty-blue text-background-warm-off-white'
                       : 'border-[#88C0D0]/30 bg-background-warm-off-white text-primary-dusty-blue hover:bg-background-light-sand'
                   )}
+                  type="button"
                 >
                   {filter}
                 </button>
@@ -130,10 +237,12 @@ export default function Projects({ setActiveView }) {
               <input
                 type="text"
                 placeholder="Search projects..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
                 className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white py-2.5 pl-10 pr-3 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
               />
             </div>
-            <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 text-sm text-primary-dusty-blue transition hover:bg-background-light-sand">
+            <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 text-sm text-primary-dusty-blue transition hover:bg-background-light-sand" type="button">
               <Filter className="h-4 w-4" />
               <span className="hidden sm:inline">Sort</span>
             </button>
@@ -157,7 +266,7 @@ export default function Projects({ setActiveView }) {
                 <h3 className="text-base font-semibold text-accent-warm-grey">{project.name}</h3>
                 <p className="mt-1 text-sm text-text-default">{project.description}</p>
               </div>
-              <button className="rounded-lg p-1.5 text-text-default transition hover:bg-background-light-sand hover:text-accent-warm-grey">
+              <button className="rounded-lg p-1.5 text-text-default transition hover:bg-background-light-sand hover:text-accent-warm-grey" type="button">
                 <MoreVertical className="h-4 w-4" />
               </button>
             </div>
@@ -198,7 +307,7 @@ export default function Projects({ setActiveView }) {
               <div className="flex -space-x-2">
                 {project.team.map((member, i) => (
                   <div
-                    key={member}
+                    key={`${member}-${i}`}
                     className={clsx(
                       'grid h-8 w-8 place-items-center rounded-full border-2 border-background-warm-off-white text-[10px] font-semibold text-background-warm-off-white',
                       avatarPalette[i % avatarPalette.length]
@@ -225,12 +334,16 @@ export default function Projects({ setActiveView }) {
                 localStorage.setItem('selectedProject', project.id);
                 setActiveView('project-details');
               }}
+              type="button"
             >
               Open <ArrowUpRight className="h-4 w-4" />
             </button>
           </motion.div>
         ))}
       </div>
+
+      {!loading && visibleProjects.length === 0 && <p className="text-sm text-text-default">No projects found.</p>}
+      {loading && <p className="text-sm text-text-default">Loading projects...</p>}
     </div>
   );
 }

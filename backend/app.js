@@ -7,11 +7,21 @@ const healthRoutes = require("./routes/healthRoutes");
 
 const app = express();
 
-app.use(cors({
-  origin: ["http://localhost:5173"],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+const isAllowedOrigin = (origin = "") => {
+  if (!origin) return true;
+  return /^https?:\/\/localhost(:\d+)?$/i.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/i.test(origin);
+};
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true
+  })
+);
 
 app.use(express.json());
 
@@ -27,3 +37,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/collab", collabRoutes);
 
 module.exports = app;
+
+if (require.main === module) {
+  require("./server");
+}

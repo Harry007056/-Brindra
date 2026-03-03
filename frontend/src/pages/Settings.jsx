@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   User,
@@ -14,8 +15,9 @@ import {
   Monitor,
   Save,
 } from 'lucide-react';
-import { useState } from 'react';
 import { clsx } from 'clsx';
+import { toast } from 'react-toastify';
+import api from '../api';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -25,14 +27,199 @@ const settingsSections = [
   { id: 'language', label: 'Language', icon: Globe },
 ];
 
-const accentPalette = ['#5E81AC', '#88C0D0', '#A3BE8C', '#E07A5F', '#5E81AC', '#88C0D0'];
+const accentPalette = ['#5E81AC', '#88C0D0', '#A3BE8C', '#E07A5F', '#4C566A', '#81A1C1'];
+const languageOptions = ['English (US)', 'English (UK)', 'Spanish', 'French', 'German', 'Japanese'];
+const timeZoneOptions = [
+  'Asia/Kolkata',
+  'UTC',
+  'America/Los_Angeles',
+  'America/Denver',
+  'America/Chicago',
+  'America/New_York',
+];
 
-export default function Settings() {
+const resolveSystemTheme = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+export default function Settings({
+  authUser,
+  theme,
+  setTheme,
+  accentColor,
+  setAccentColor,
+  onAuthUserUpdated,
+  onWorkspaceUpdated,
+}) {
   const [activeSection, setActiveSection] = useState('profile');
-  const [darkMode, setDarkMode] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
-  const [accentColor, setAccentColor] = useState('#5E81AC');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [profile, setProfile] = useState({
+    name: authUser?.name || '',
+    email: authUser?.email || '',
+    workspaceName: authUser?.workspaceName || 'Team Workspace',
+  });
+  const [notifications, setNotifications] = useState({ email: true, push: false });
+  const [security, setSecurity] = useState({
+    twoFactorEnabled: false,
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [appearance, setAppearance] = useState({ theme: 'system', accentColor: accentColor || '#5E81AC' });
+  const [language, setLanguage] = useState({
+    displayLanguage: 'English (US)',
+    timeZone: 'Asia/Kolkata',
+  });
+
+  const role = authUser?.role ? authUser.role.replace('_', ' ') : 'member';
+  const initials = (profile.name || 'User')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part?.[0]?.toUpperCase() || '')
+    .join('');
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/auth/settings');
+        if (!isMounted) return;
+        const payload = response.data || {};
+        const nextProfile = payload.profile || {};
+        const nextSettings = payload.settings || {};
+        setProfile({
+          name: nextProfile.name || '',
+          email: nextProfile.email || '',
+          workspaceName: nextProfile.workspaceName || 'Team Workspace',
+        });
+        setNotifications({
+          email: typeof nextSettings?.notifications?.email === 'boolean' ? nextSettings.notifications.email : true,
+          push: typeof nextSettings?.notifications?.push === 'boolean' ? nextSettings.notifications.push : false,
+        });
+        setSecurity((prev) => ({
+          ...prev,
+          twoFactorEnabled:
+            typeof nextSettings?.security?.twoFactorEnabled === 'boolean'
+              ? nextSettings.security.twoFactorEnabled
+              : false,
+        }));
+        setAppearance({
+          theme: ['light', 'dark', 'system'].includes(nextSettings?.appearance?.theme) ? nextSettings.appearance.theme : 'system',
+          accentColor: nextSettings?.appearance?.accentColor || accentColor || '#5E81AC',
+        });
+        if (nextSettings?.appearance?.accentColor) setAccentColor?.(nextSettings.appearance.accentColor);
+        const preferredTheme = ['light', 'dark', 'system'].includes(nextSettings?.appearance?.theme)
+          ? nextSettings.appearance.theme
+          : 'system';
+        setTheme?.(preferredTheme === 'system' ? resolveSystemTheme() : preferredTheme);
+        setLanguage({
+          displayLanguage: nextSettings?.language?.displayLanguage || 'English (US)',
+          timeZone: nextSettings?.language?.timeZone || 'Asia/Kolkata',
+        });
+      } catch {
+        toast.error('Failed to load settings');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, [accentColor, setAccentColor, setTheme]);
+
+  const saveSettings = async (payload, successMessage) => {
+    try {
+      setSaving(true);
+      const response = await api.put('/auth/settings', payload);
+      const nextUser = response.data?.user || null;
+      if (nextUser) {
+        onAuthUserUpdated?.(nextUser);
+        if (nextUser.workspaceName) onWorkspaceUpdated?.(nextUser.workspaceName);
+      }
+      toast.success(successMessage);
+      return response.data;
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save settings');
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleProfileSave = async () => {
+    const nextName = String(profile.name || '').trim();
+    const nextEmail = String(profile.email || '').trim();
+    if (!nextName || !nextEmail) {
+      toast.error('Name and email are required');
+      return;
+    }
+    await saveSettings(
+      {
+        name: nextName,
+        email: nextEmail,
+        workspaceName: String(profile.workspaceName || '').trim() || 'Team Workspace',
+      },
+      'Profile updated'
+    );
+  };
+
+  const handleNotificationsSave = async () => {
+    await saveSettings({ settings: { notifications } }, 'Notification settings updated');
+  };
+
+  const handleSecuritySave = async () => {
+    const currentPassword = String(security.currentPassword || '');
+    const newPassword = String(security.newPassword || '');
+    const confirmPassword = String(security.confirmPassword || '');
+    if (newPassword || confirmPassword || currentPassword) {
+      if (!currentPassword || !newPassword) {
+        toast.error('Current password and new password are required');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error('New password and confirm password do not match');
+        return;
+      }
+      try {
+        setSaving(true);
+        await api.put('/auth/change-password', { currentPassword, newPassword });
+        toast.success('Password updated');
+        setSecurity((prev) => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Failed to update password');
+        setSaving(false);
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
+    await saveSettings({ settings: { security: { twoFactorEnabled: security.twoFactorEnabled } } }, 'Security settings updated');
+  };
+
+  const handleAppearanceSave = async () => {
+    const selectedTheme = appearance.theme === 'system' ? resolveSystemTheme() : appearance.theme;
+    setTheme?.(selectedTheme);
+    setAccentColor?.(appearance.accentColor);
+    await saveSettings({ settings: { appearance } }, 'Appearance updated');
+  };
+
+  const handleLanguageSave = async () => {
+    await saveSettings(
+      {
+        settings: {
+          language: {
+            displayLanguage: language.displayLanguage,
+            timeZone: language.timeZone,
+          },
+        },
+      },
+      'Language settings updated'
+    );
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -61,6 +248,7 @@ export default function Settings() {
               return (
                 <button
                   key={section.id}
+                  type="button"
                   onClick={() => setActiveSection(section.id)}
                   className={clsx(
                     'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
@@ -84,46 +272,69 @@ export default function Settings() {
           transition={{ delay: 0.2 }}
           className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-5 shadow-sm"
         >
-          {activeSection === 'profile' && (
+          {loading && <p className="text-sm text-text-default">Loading settings...</p>}
+
+          {!loading && activeSection === 'profile' && (
             <div className="space-y-5">
               <h2 className="text-xl font-semibold text-accent-warm-grey">Profile Information</h2>
 
               <div className="flex flex-col gap-4 rounded-2xl bg-background-light-sand p-4 sm:flex-row sm:items-center">
-                <div className="relative">
-                  <div className="grid h-16 w-16 place-items-center rounded-full bg-primary-dusty-blue text-lg font-semibold text-background-warm-off-white">AK</div>
-                  <button className="absolute -bottom-1 -right-1 rounded-full border border-[#D9E1D7] bg-background-warm-off-white p-1.5 text-primary-dusty-blue shadow-sm">
-                    <Palette className="h-3.5 w-3.5" />
-                  </button>
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-primary-dusty-blue text-lg font-semibold text-background-warm-off-white">
+                  {initials || 'U'}
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-accent-warm-grey">Alex Kim</h3>
-                  <p className="text-sm text-text-default">Product Lead</p>
-                  <p className="mt-1 text-xs text-text-default">
-                    This will be displayed on your profile and in team communications.
-                  </p>
+                  <h3 className="text-base font-semibold text-accent-warm-grey">{profile.name || 'User'}</h3>
+                  <p className="text-sm text-text-default">{role}</p>
+                  <p className="mt-1 text-xs text-text-default">This will be displayed on your profile and in team communications.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {[
-                  { label: 'Full Name', value: 'Alex Kim', type: 'text' },
-                  { label: 'Email Address', value: 'alex@brindra.io', type: 'email' },
-                  { label: 'Role', value: 'Product Lead', type: 'text' },
-                  { label: 'Location', value: 'San Francisco, CA', type: 'text' },
-                ].map((field) => (
-                  <label key={field.label} className="space-y-1">
-                    <span className="text-xs font-medium text-text-default">{field.label}</span>
-                    <input
-                      type={field.type}
-                      defaultValue={field.value}
-                      className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
-                    />
-                  </label>
-                ))}
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-text-default">Full Name</span>
+                  <input
+                    type="text"
+                    value={profile.name}
+                    onChange={(event) => setProfile((prev) => ({ ...prev, name: event.target.value }))}
+                    className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-text-default">Email Address</span>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    onChange={(event) => setProfile((prev) => ({ ...prev, email: event.target.value }))}
+                    className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-text-default">Role</span>
+                  <input
+                    type="text"
+                    value={role}
+                    disabled
+                    className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-light-sand px-3 py-2.5 text-sm text-accent-warm-grey outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-text-default">Workspace</span>
+                  <input
+                    type="text"
+                    value={profile.workspaceName}
+                    onChange={(event) => setProfile((prev) => ({ ...prev, workspaceName: event.target.value }))}
+                    className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                  />
+                </label>
               </div>
 
               <div className="pt-1">
-                <button className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
+                <button
+                  type="button"
+                  onClick={handleProfileSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky disabled:opacity-60"
+                >
                   <Save className="h-4 w-4" />
                   Save Changes
                 </button>
@@ -131,7 +342,7 @@ export default function Settings() {
             </div>
           )}
 
-          {activeSection === 'notifications' && (
+          {!loading && activeSection === 'notifications' && (
             <div className="space-y-5">
               <h2 className="text-xl font-semibold text-accent-warm-grey">Notification Preferences</h2>
 
@@ -147,16 +358,14 @@ export default function Settings() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setEmailNotifications(!emailNotifications)}
-                    className={clsx(
-                      'relative h-6 w-11 rounded-full transition',
-                      emailNotifications ? 'bg-primary-dusty-blue' : 'bg-slate-300'
-                    )}
+                    type="button"
+                    onClick={() => setNotifications((prev) => ({ ...prev, email: !prev.email }))}
+                    className={clsx('relative h-6 w-11 rounded-full transition', notifications.email ? 'bg-primary-dusty-blue' : 'bg-slate-300')}
                   >
                     <span
                       className={clsx(
                         'absolute top-0.5 h-5 w-5 rounded-full bg-background-warm-off-white shadow transition',
-                        emailNotifications ? 'left-5' : 'left-0.5'
+                        notifications.email ? 'left-5' : 'left-0.5'
                       )}
                     />
                   </button>
@@ -173,42 +382,71 @@ export default function Settings() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setPushNotifications(!pushNotifications)}
-                    className={clsx(
-                      'relative h-6 w-11 rounded-full transition',
-                      pushNotifications ? 'bg-primary-dusty-blue' : 'bg-slate-300'
-                    )}
+                    type="button"
+                    onClick={() => setNotifications((prev) => ({ ...prev, push: !prev.push }))}
+                    className={clsx('relative h-6 w-11 rounded-full transition', notifications.push ? 'bg-primary-dusty-blue' : 'bg-slate-300')}
                   >
                     <span
                       className={clsx(
                         'absolute top-0.5 h-5 w-5 rounded-full bg-background-warm-off-white shadow transition',
-                        pushNotifications ? 'left-5' : 'left-0.5'
+                        notifications.push ? 'left-5' : 'left-0.5'
                       )}
                     />
                   </button>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleNotificationsSave}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                Save Changes
+              </button>
             </div>
           )}
 
-          {activeSection === 'security' && (
+          {!loading && activeSection === 'security' && (
             <div className="space-y-5">
               <h2 className="text-xl font-semibold text-accent-warm-grey">Security Settings</h2>
 
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-background-light-sand p-4">
-                  <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-background-light-sand p-4">
+                  <div className="mb-3 flex items-center gap-3">
                     <div className="rounded-lg bg-background-warm-off-white p-2 text-primary-dusty-blue">
                       <Key className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-accent-warm-grey">Password</h3>
-                      <p className="text-xs text-text-default">Last changed 30 days ago</p>
+                      <h3 className="text-sm font-semibold text-accent-warm-grey">Change Password</h3>
+                      <p className="text-xs text-text-default">Use your current password to set a new one</p>
                     </div>
                   </div>
-                  <button className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-1.5 text-sm font-medium text-primary-dusty-blue transition hover:bg-background-warm-off-white">
-                    Change
-                  </button>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <input
+                      type="password"
+                      placeholder="Current password"
+                      value={security.currentPassword}
+                      onChange={(event) => setSecurity((prev) => ({ ...prev, currentPassword: event.target.value }))}
+                      className="w-full rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-accent-warm-grey outline-none"
+                    />
+                    <input
+                      type="password"
+                      placeholder="New password"
+                      value={security.newPassword}
+                      onChange={(event) => setSecurity((prev) => ({ ...prev, newPassword: event.target.value }))}
+                      className="w-full rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-accent-warm-grey outline-none"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Confirm password"
+                      value={security.confirmPassword}
+                      onChange={(event) => setSecurity((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                      className="w-full rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-accent-warm-grey outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-background-light-sand p-4">
@@ -221,15 +459,34 @@ export default function Settings() {
                       <p className="text-xs text-text-default">Add an extra layer of security</p>
                     </div>
                   </div>
-                  <button className="rounded-lg bg-primary-dusty-blue px-3 py-1.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
-                    Enable
+                  <button
+                    type="button"
+                    onClick={() => setSecurity((prev) => ({ ...prev, twoFactorEnabled: !prev.twoFactorEnabled }))}
+                    className={clsx(
+                      'rounded-lg px-3 py-1.5 text-sm font-medium transition',
+                      security.twoFactorEnabled
+                        ? 'bg-secondary-sage-green/20 text-secondary-olive-accent'
+                        : 'bg-primary-dusty-blue text-background-warm-off-white hover:bg-primary-soft-sky'
+                    )}
+                  >
+                    {security.twoFactorEnabled ? 'Enabled' : 'Enable'}
                   </button>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleSecuritySave}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                Save Changes
+              </button>
             </div>
           )}
 
-          {activeSection === 'appearance' && (
+          {!loading && activeSection === 'appearance' && (
             <div className="space-y-5">
               <h2 className="text-xl font-semibold text-accent-warm-grey">Appearance</h2>
 
@@ -238,97 +495,133 @@ export default function Settings() {
                   <h3 className="mb-2 text-sm font-semibold text-accent-warm-grey">Theme</h3>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => setDarkMode(true)}
+                      type="button"
+                      onClick={() => {
+                        setAppearance((prev) => ({ ...prev, theme: 'dark' }));
+                        setTheme?.('dark');
+                      }}
                       className={clsx(
                         'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
-                        darkMode
+                        appearance.theme === 'dark'
                           ? 'border-primary-dusty-blue bg-primary-dusty-blue text-background-warm-off-white'
-                          : 'border-[#88C0D0]/35 bg-background-warm-off-white text-primary-dusty-blue hover:bg-background-warm-off-white'
+                          : 'border-[#88C0D0]/35 bg-background-warm-off-white text-primary-dusty-blue'
                       )}
                     >
                       <Moon className="h-4 w-4" />
                       Dark
                     </button>
                     <button
-                      onClick={() => setDarkMode(false)}
+                      type="button"
+                      onClick={() => {
+                        setAppearance((prev) => ({ ...prev, theme: 'light' }));
+                        setTheme?.('light');
+                      }}
                       className={clsx(
                         'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
-                        !darkMode
+                        appearance.theme === 'light'
                           ? 'border-primary-dusty-blue bg-primary-dusty-blue text-background-warm-off-white'
-                          : 'border-[#88C0D0]/35 bg-background-warm-off-white text-primary-dusty-blue hover:bg-background-warm-off-white'
+                          : 'border-[#88C0D0]/35 bg-background-warm-off-white text-primary-dusty-blue'
                       )}
                     >
                       <Sun className="h-4 w-4" />
                       Light
                     </button>
-                    <button className="inline-flex items-center gap-2 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-primary-dusty-blue transition hover:bg-background-warm-off-white">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppearance((prev) => ({ ...prev, theme: 'system' }));
+                        setTheme?.(resolveSystemTheme());
+                      }}
+                      className={clsx(
+                        'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
+                        appearance.theme === 'system'
+                          ? 'border-primary-dusty-blue bg-primary-dusty-blue text-background-warm-off-white'
+                          : 'border-[#88C0D0]/35 bg-background-warm-off-white text-primary-dusty-blue'
+                      )}
+                    >
                       <Monitor className="h-4 w-4" />
                       System
                     </button>
                   </div>
+                  <p className="mt-2 text-xs text-text-default">Current app theme: {theme || 'light'}</p>
                 </div>
 
                 <div>
                   <h3 className="mb-2 text-sm font-semibold text-accent-warm-grey">Accent Color</h3>
                   <div className="flex flex-wrap gap-2">
-                    {accentPalette.map((color) => (
+                    {accentPalette.map((color, index) => (
                       <button
-                        key={color}
-                        onClick={() => setAccentColor(color)}
-                        className={clsx('h-7 w-7 rounded-full border-2 transition', accentColor === color ? 'border-accent-warm-grey scale-110' : 'border-[#D9E1D7]')}
+                        key={`${color}-${index}`}
+                        type="button"
+                        onClick={() => {
+                          setAppearance((prev) => ({ ...prev, accentColor: color }));
+                          setAccentColor?.(color);
+                        }}
+                        className={clsx(
+                          'h-7 w-7 rounded-full border-2 transition',
+                          appearance.accentColor === color ? 'border-accent-warm-grey scale-110' : 'border-[#D9E1D7]'
+                        )}
                         style={{ backgroundColor: color }}
                       />
                     ))}
                   </div>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleAppearanceSave}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                Save Changes
+              </button>
             </div>
           )}
 
-          {activeSection === 'language' && (
+          {!loading && activeSection === 'language' && (
             <div className="space-y-5">
               <h2 className="text-xl font-semibold text-accent-warm-grey">Language & Region</h2>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="space-y-1">
                   <span className="text-xs font-medium text-text-default">Display Language</span>
-                  <select className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30">
-                    <option>English (US)</option>
-                    <option>English (UK)</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                    <option>German</option>
-                    <option>Japanese</option>
+                  <select
+                    value={language.displayLanguage}
+                    onChange={(event) => setLanguage((prev) => ({ ...prev, displayLanguage: event.target.value }))}
+                    className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                  >
+                    {languageOptions.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </label>
 
                 <label className="space-y-1">
                   <span className="text-xs font-medium text-text-default">Time Zone</span>
-                  <select className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30">
-                    <option>Pacific Time (PT)</option>
-                    <option>Mountain Time (MT)</option>
-                    <option>Central Time (CT)</option>
-                    <option>Eastern Time (ET)</option>
-                    <option>UTC</option>
+                  <select
+                    value={language.timeZone}
+                    onChange={(event) => setLanguage((prev) => ({ ...prev, timeZone: event.target.value }))}
+                    className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                  >
+                    {timeZoneOptions.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </label>
 
-                <label className="space-y-1 sm:col-span-2">
-                  <span className="text-xs font-medium text-text-default">Date Format</span>
-                  <select className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30">
-                    <option>MM/DD/YYYY</option>
-                    <option>DD/MM/YYYY</option>
-                    <option>YYYY-MM-DD</option>
-                  </select>
-                </label>
               </div>
 
-              <div className="pt-1">
-                <button className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
-                  <Save className="h-4 w-4" />
-                  Save Changes
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleLanguageSave}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                Save Changes
+              </button>
             </div>
           )}
         </motion.div>

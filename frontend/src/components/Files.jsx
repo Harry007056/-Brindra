@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -10,31 +11,51 @@ import {
   FileText,
   Download,
   MoreVertical,
-  Star,
   Share2,
   Trash2,
   Clock,
 } from 'lucide-react';
-import { useState } from 'react';
 import { clsx } from 'clsx';
+import { toast } from 'react-toastify';
+import api from '../api';
 
-const files = [
-  { id: 1, name: 'Brand Guidelines.pdf', size: '2.4 MB', type: 'document', modified: '2 hours ago', starred: true },
-  { id: 2, name: 'Logo Assets.zip', size: '15.8 MB', type: 'archive', modified: '1 day ago', starred: true },
-  { id: 3, name: 'Product Screens.png', size: '8.2 MB', type: 'image', modified: '3 days ago', starred: false },
-  { id: 4, name: 'Presentation Deck.pptx', size: '5.6 MB', type: 'document', modified: '1 week ago', starred: false },
-  { id: 5, name: 'Marketing Video.mp4', size: '124 MB', type: 'video', modified: '2 weeks ago', starred: true },
-  { id: 6, name: 'User Research.docx', size: '1.2 MB', type: 'document', modified: '3 weeks ago', starred: false },
-  { id: 7, name: 'Icon Set.svg', size: '340 KB', type: 'image', modified: '1 month ago', starred: false },
-  { id: 8, name: 'API Documentation.pdf', size: '890 KB', type: 'document', modified: '1 month ago', starred: false },
-];
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const FILE_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
-const folders = [
-  { id: 1, name: 'Design Assets', count: 24, color: 'from-[#E07A5F] to-[#E07A5F]' },
-  { id: 2, name: 'Project Docs', count: 18, color: 'from-primary-dusty-blue to-primary-soft-sky' },
-  { id: 3, name: 'Marketing', count: 12, color: 'from-[#A3BE8C] to-[#22c55e]' },
-  { id: 4, name: 'Archive', count: 45, color: 'from-[#88C0D0] to-[#5E81AC]' },
-];
+const formatBytes = (bytes) => {
+  const value = Number(bytes || 0);
+  if (value <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let index = 0;
+  let size = value;
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index += 1;
+  }
+  return `${size.toFixed(size >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
+const fromNow = (value) => {
+  if (!value) return 'just now';
+  const diff = Date.now() - new Date(value).getTime();
+  if (diff < 60000) return 'just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
+const getFileType = (file) => {
+  const mime = String(file.mimeType || '').toLowerCase();
+  const name = String(file.fileName || '').toLowerCase();
+
+  if (mime.startsWith('image/') || /\.(png|jpg|jpeg|gif|svg|webp)$/.test(name)) return 'image';
+  if (mime.startsWith('video/') || /\.(mp4|mov|avi|mkv)$/.test(name)) return 'video';
+  if (/(zip|rar|7z|tar|gzip)/.test(mime) || /\.(zip|rar|7z|tar|gz)$/.test(name)) return 'archive';
+  return 'document';
+};
 
 const getFileIcon = (type) => {
   switch (type) {
@@ -62,8 +83,173 @@ const getTypeStyles = (type) => {
   }
 };
 
-export default function Files() {
+const folderColors = [
+  'from-[#E07A5F] to-[#E07A5F]',
+  'from-primary-dusty-blue to-primary-soft-sky',
+  'from-[#A3BE8C] to-[#22c55e]',
+  'from-[#88C0D0] to-[#5E81AC]',
+];
+
+export default function Files({ authUser }) {
   const [viewMode, setViewMode] = useState('grid');
+  const [search, setSearch] = useState('');
+  const [files, setFiles] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const folderInputRef = useRef(null);
+
+  const reloadData = useCallback(async () => {
+    const [filesRes, projectsRes] = await Promise.all([api.get('/collab/files'), api.get('/collab/projects')]);
+    const nextFiles = Array.isArray(filesRes.data) ? filesRes.data : [];
+    const nextProjects = Array.isArray(projectsRes.data) ? projectsRes.data : [];
+    setFiles(nextFiles);
+    setProjects(nextProjects);
+    setSelectedProjectId((prev) => (prev || (nextProjects[0]?._id ? String(nextProjects[0]._id) : '')));
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        if (!isMounted) return;
+        await reloadData();
+      } catch {
+        if (!isMounted) return;
+        setError('Failed to load files');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [reloadData]);
+
+  useEffect(() => {
+    if (!selectedProjectId && projects[0]?._id) {
+      setSelectedProjectId(String(projects[0]._id));
+    }
+  }, [projects, selectedProjectId]);
+
+  const visibleFiles = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return files
+      .filter((file) => String(file.fileName || '').toLowerCase().includes(term))
+      .map((file) => ({
+        ...file,
+        id: String(file._id),
+        name: file.fileName,
+        size: formatBytes(file.sizeBytes),
+        type: getFileType(file),
+        modified: fromNow(file.createdAt || file.updatedAt),
+      }));
+  }, [files, search]);
+
+  const folders = useMemo(() => {
+    const counts = files.reduce((acc, file) => {
+      const key = String(file.projectId || 'unknown');
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(counts).map(([projectId, count], index) => {
+      const project = projects.find((item) => String(item._id) === projectId);
+      return {
+        id: projectId,
+        name: project?.name || 'Unassigned',
+        count,
+        color: folderColors[index % folderColors.length],
+      };
+    });
+  }, [files, projects]);
+
+  const handleNewFolder = async () => {
+    const folderName = window.prompt('Enter folder name');
+    if (!folderName || !folderName.trim()) return;
+
+    try {
+      await api.post('/collab/projects', {
+        name: folderName.trim(),
+        description: 'Folder created from Files page',
+        status: 'active',
+        ownerId: authUser?.id || null,
+      });
+      await reloadData();
+      toast.success('Folder created');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to create folder');
+    }
+  };
+
+  const handleUploadFolder = async (event) => {
+    const fileList = Array.from(event.target?.files || []);
+    if (!fileList.length) return;
+
+    if (!selectedProjectId) {
+      toast.error('Select a folder/project first');
+      return;
+    }
+
+    try {
+      for (const file of fileList) {
+        await api.post('/collab/files', {
+          projectId: selectedProjectId,
+          uploaderId: authUser?.id || null,
+          fileName: file.name,
+          path: file.webkitRelativePath || file.name,
+          mimeType: file.type || '',
+          sizeBytes: file.size || 0,
+        });
+      }
+
+      await reloadData();
+      toast.success('Folder uploaded');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to upload folder');
+    } finally {
+      if (event.target) event.target.value = '';
+    }
+  };
+
+  const handleDownload = (file) => {
+    const path = String(file.path || '');
+    const link = document.createElement('a');
+    link.href = path.startsWith('http') ? path : `${FILE_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+    link.download = file.name || file.fileName || 'file';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleShare = async (file) => {
+    const path = String(file.path || '');
+    const shareUrl = path.startsWith('http') ? path : `${FILE_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('File link copied');
+    } catch {
+      toast.error('Failed to copy file link');
+    }
+  };
+
+  const handleDelete = async (fileId) => {
+    if (!fileId) return;
+    try {
+      await api.delete(`/collab/files/${fileId}`);
+      setFiles((prev) => prev.filter((item) => String(item._id) !== String(fileId)));
+      toast.success('File deleted');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete file');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -75,20 +261,50 @@ export default function Files() {
       >
         <div className="space-y-1">
           <h1 className="text-3xl font-bold text-accent-warm-grey">Files</h1>
-          <p className="text-text-default">Manage and share your team's files.</p>
+          <p className="text-text-default">Manage and share your team&apos;s files.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button className="inline-flex items-center gap-2 rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-4 py-2.5 text-sm font-medium text-primary-dusty-blue transition hover:bg-background-light-sand">
+          <select
+            value={selectedProjectId}
+            onChange={(event) => setSelectedProjectId(event.target.value)}
+            className="rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-primary-dusty-blue outline-none"
+          >
+            {projects.map((project) => (
+              <option key={String(project._id)} value={String(project._id)}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+          <button
+            className="inline-flex items-center gap-2 rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-4 py-2.5 text-sm font-medium text-primary-dusty-blue transition hover:bg-background-light-sand"
+            type="button"
+            onClick={handleNewFolder}
+          >
             <FolderPlus className="h-4 w-4" />
             New Folder
           </button>
-          <button className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky">
+          <button
+            className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
+            type="button"
+            onClick={() => folderInputRef.current?.click()}
+          >
             <Upload className="h-4 w-4" />
-            Upload
+            Upload Folder
           </button>
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            webkitdirectory="true"
+            directory="true"
+            className="hidden"
+            onChange={handleUploadFolder}
+          />
         </div>
       </motion.div>
+
+      {error && <p className="rounded-xl border border-[#E07A5F]/40 bg-[#E07A5F]/10 px-3 py-2 text-sm text-[#4C566A]">{error}</p>}
 
       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="space-y-3">
         <h2 className="text-lg font-semibold text-accent-warm-grey">Folders</h2>
@@ -100,6 +316,7 @@ export default function Files() {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1 + index * 0.05 }}
               className="group relative overflow-hidden rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 text-left shadow-sm transition hover:shadow-md"
+              type="button"
             >
               <div className={clsx('absolute inset-x-0 top-0 h-1 bg-gradient-to-r', folder.color)} />
               <div className={clsx('mb-3 inline-flex rounded-xl p-2.5 text-background-warm-off-white bg-gradient-to-br', folder.color)}>
@@ -125,6 +342,8 @@ export default function Files() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-dusty-blue" />
               <input
                 type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search files..."
                 className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white py-2.5 pl-10 pr-3 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
               />
@@ -136,6 +355,7 @@ export default function Files() {
                   'rounded-lg p-2 transition',
                   viewMode === 'grid' ? 'bg-primary-dusty-blue text-background-warm-off-white' : 'text-primary-dusty-blue hover:bg-background-light-sand'
                 )}
+                type="button"
               >
                 <Grid className="h-4 w-4" />
               </button>
@@ -145,6 +365,7 @@ export default function Files() {
                   'rounded-lg p-2 transition',
                   viewMode === 'list' ? 'bg-primary-dusty-blue text-background-warm-off-white' : 'text-primary-dusty-blue hover:bg-background-light-sand'
                 )}
+                type="button"
               >
                 <List className="h-4 w-4" />
               </button>
@@ -154,7 +375,7 @@ export default function Files() {
 
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {files.map((file, index) => {
+            {visibleFiles.map((file, index) => {
               const Icon = getFileIcon(file.type);
               return (
                 <motion.div
@@ -168,14 +389,9 @@ export default function Files() {
                     <div className={clsx('rounded-lg p-2.5', getTypeStyles(file.type))}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button className={clsx('rounded-md p-1.5 transition', file.starred ? 'text-[#E07A5F]' : 'text-text-default hover:bg-background-warm-off-white')}>
-                        <Star className={clsx('h-4 w-4', file.starred && 'fill-current')} />
-                      </button>
-                      <button className="rounded-md p-1.5 text-text-default transition hover:bg-background-warm-off-white hover:text-accent-warm-grey">
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <button className="rounded-md p-1.5 text-text-default transition hover:bg-background-warm-off-white hover:text-accent-warm-grey" type="button">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
                   </div>
                   <h3 className="truncate text-sm font-medium text-accent-warm-grey">{file.name}</h3>
                   <div className="mt-2 flex items-center justify-between text-xs text-text-default">
@@ -185,13 +401,24 @@ export default function Files() {
                       {file.modified}
                     </span>
                   </div>
+                  <div className="mt-3 flex items-center gap-1">
+                    <button className="rounded-md p-1.5 text-primary-dusty-blue transition hover:bg-background-warm-off-white" type="button" onClick={() => handleShare(file)}>
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                    <button className="rounded-md p-1.5 text-primary-dusty-blue transition hover:bg-background-warm-off-white" type="button" onClick={() => handleDownload(file)}>
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button className="rounded-md p-1.5 text-accent-muted-coral transition hover:bg-background-warm-off-white" type="button" onClick={() => handleDelete(file.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </motion.div>
               );
             })}
           </div>
         ) : (
           <div className="space-y-2">
-            {files.map((file, index) => {
+            {visibleFiles.map((file, index) => {
               const Icon = getFileIcon(file.type);
               return (
                 <motion.div
@@ -210,16 +437,13 @@ export default function Files() {
                   <span className="text-xs text-text-default lg:min-w-20">{file.size}</span>
                   <span className="text-xs text-text-default lg:min-w-28">{file.modified}</span>
                   <div className="ml-auto flex items-center gap-1">
-                    <button className={clsx('rounded-md p-1.5 transition', file.starred ? 'text-[#E07A5F]' : 'text-text-default hover:bg-background-warm-off-white')}>
-                      <Star className={clsx('h-4 w-4', file.starred && 'fill-current')} />
-                    </button>
-                    <button className="rounded-md p-1.5 text-primary-dusty-blue transition hover:bg-background-warm-off-white">
+                    <button className="rounded-md p-1.5 text-primary-dusty-blue transition hover:bg-background-warm-off-white" type="button" onClick={() => handleShare(file)}>
                       <Share2 className="h-4 w-4" />
                     </button>
-                    <button className="rounded-md p-1.5 text-primary-dusty-blue transition hover:bg-background-warm-off-white">
+                    <button className="rounded-md p-1.5 text-primary-dusty-blue transition hover:bg-background-warm-off-white" type="button" onClick={() => handleDownload(file)}>
                       <Download className="h-4 w-4" />
                     </button>
-                    <button className="rounded-md p-1.5 text-accent-muted-coral transition hover:bg-background-warm-off-white">
+                    <button className="rounded-md p-1.5 text-accent-muted-coral transition hover:bg-background-warm-off-white" type="button" onClick={() => handleDelete(file.id)}>
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -229,6 +453,9 @@ export default function Files() {
           </div>
         )}
       </motion.div>
+
+      {!loading && visibleFiles.length === 0 && <p className="text-sm text-text-default">No files available.</p>}
+      {loading && <p className="text-sm text-text-default">Loading files...</p>}
     </div>
   );
 }

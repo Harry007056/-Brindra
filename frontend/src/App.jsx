@@ -2,9 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { MemoryRouter } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Moon, Sun } from 'lucide-react';
+import { ToastContainer } from 'react-toastify';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
-import api, { clearAuthTokens, getAccessToken, getRefreshToken } from './api';
+import api, { clearAuthTokens, getAccessToken, getActiveSessionId, getRefreshToken } from './api';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const TeamMembers = lazy(() => import('./pages/TeamMembers'));
@@ -45,6 +46,46 @@ const pageRegistry = {
 };
 
 const THEME_STORAGE_KEY = 'brindra-theme';
+const ACCENT_STORAGE_KEY = 'brindra-accent-color';
+const WORKSPACE_KEY_PREFIX = 'activeWorkspaceId:';
+const PLAN_KEY_PREFIX = 'selectedPlan:';
+const PLAN_ORDER = ['demo', 'starter', 'growth', 'enterprise'];
+const PLAN_ALLOWED_VIEWS = {
+  demo: new Set(['dashboard', 'projects']),
+  starter: new Set(['dashboard', 'projects', 'team', 'messages']),
+  growth: new Set(['dashboard', 'projects', 'team', 'messages', 'files', 'chat', 'teams']),
+  enterprise: new Set(['dashboard', 'projects', 'team', 'messages', 'files', 'chat', 'teams', 'settings', 'profile', 'project-details']),
+};
+
+const getWorkspaceStorageKey = () => `${WORKSPACE_KEY_PREFIX}${getActiveSessionId() || 'guest'}`;
+const getPlanStorageKey = () => `${PLAN_KEY_PREFIX}${getActiveSessionId() || 'guest'}`;
+
+const getStoredWorkspaceId = () => localStorage.getItem(getWorkspaceStorageKey()) || '';
+
+const setStoredWorkspaceId = (workspaceId) => {
+  if (!workspaceId) return;
+  localStorage.setItem(getWorkspaceStorageKey(), workspaceId);
+};
+
+const clearStoredWorkspaceId = () => {
+  localStorage.removeItem(getWorkspaceStorageKey());
+};
+
+const getStoredPlan = () => {
+  const stored = localStorage.getItem(getPlanStorageKey()) || '';
+  if (PLAN_ORDER.includes(stored)) return stored;
+  const guestStored = localStorage.getItem(`${PLAN_KEY_PREFIX}guest`) || '';
+  return PLAN_ORDER.includes(guestStored) ? guestStored : 'demo';
+};
+
+const setStoredPlan = (planId) => {
+  if (!PLAN_ORDER.includes(planId)) return;
+  localStorage.setItem(getPlanStorageKey(), planId);
+};
+
+const clearStoredPlan = () => {
+  localStorage.removeItem(getPlanStorageKey());
+};
 
 const resolveInitialTheme = () => {
   if (typeof window === 'undefined') return 'light';
@@ -53,23 +94,69 @@ const resolveInitialTheme = () => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
+const resolveInitialAccent = () => {
+  if (typeof window === 'undefined') return '#5E81AC';
+  return localStorage.getItem(ACCENT_STORAGE_KEY) || '#5E81AC';
+};
+
+const hexToRgb = (hex) => {
+  const value = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(value)) return null;
+  return {
+    r: parseInt(value.slice(0, 2), 16),
+    g: parseInt(value.slice(2, 4), 16),
+    b: parseInt(value.slice(4, 6), 16),
+  };
+};
+
+const rgbToHex = ({ r, g, b }) =>
+  `#${[r, g, b]
+    .map((part) => Math.max(0, Math.min(255, Math.round(part))).toString(16).padStart(2, '0'))
+    .join('')}`;
+
+const lightenHex = (hex, amount = 0.35) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return '#88C0D0';
+  return rgbToHex({
+    r: rgb.r + (255 - rgb.r) * amount,
+    g: rgb.g + (255 - rgb.g) * amount,
+    b: rgb.b + (255 - rgb.b) * amount,
+  });
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getAccessToken()));
   const [activeView, setActiveView] = useState(() => (getAccessToken() ? 'dashboard' : 'landing'));
   const [sessionLoading, setSessionLoading] = useState(() => Boolean(getAccessToken()));
   const [authUser, setAuthUser] = useState(null);
   const [userWorkspaces, setUserWorkspaces] = useState([]);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(() => localStorage.getItem('activeWorkspaceId') || '');
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(() => getStoredWorkspaceId());
   const [activeRole, setActiveRole] = useState(null);
   const [theme, setTheme] = useState(resolveInitialTheme);
+  const [accentColor, setAccentColor] = useState(resolveInitialAccent);
+  const [activePlan, setActivePlan] = useState(getStoredPlan);
+
+  const isViewAllowedByPlan = useCallback(
+    (viewId) => {
+      if (!isAuthenticated) return true;
+      const allowed = PLAN_ALLOWED_VIEWS[activePlan] || PLAN_ALLOWED_VIEWS.demo;
+      return allowed.has(viewId);
+    },
+    [activePlan, isAuthenticated]
+  );
 
   const visibleExtraViews = useMemo(
     () =>
       Object.entries(pageRegistry).filter(
-        ([, page]) => isAuthenticated && page.group === 'extra' && page.protected
+        ([id, page]) => isAuthenticated && page.group === 'extra' && page.protected && isViewAllowedByPlan(id)
       ),
-    [isAuthenticated]
+    [isAuthenticated, isViewAllowedByPlan]
   );
+
+  const allowedSidebarViews = useMemo(() => {
+    const baseViews = ['dashboard', 'team', 'projects', 'messages', 'files', 'settings'];
+    return baseViews.filter((viewId) => isViewAllowedByPlan(viewId));
+  }, [isViewAllowedByPlan]);
 
   const hydrateSession = useCallback(async () => {
     if (!getAccessToken()) {
@@ -82,16 +169,16 @@ export default function App() {
       const user = response.data?.user || null;
       const workspaces = Array.isArray(response.data?.workspaces) ? response.data.workspaces : [];
       const defaultWorkspace =
-        workspaces.find((workspace) => String(workspace.workspaceId) === String(localStorage.getItem('activeWorkspaceId'))) ||
+        workspaces.find((workspace) => String(workspace.workspaceId) === String(getStoredWorkspaceId())) ||
         workspaces[0] ||
         null;
 
       if (defaultWorkspace?.workspaceId) {
-        localStorage.setItem('activeWorkspaceId', String(defaultWorkspace.workspaceId));
+        setStoredWorkspaceId(String(defaultWorkspace.workspaceId));
         setSelectedWorkspaceId(String(defaultWorkspace.workspaceId));
         setActiveRole(defaultWorkspace.role || null);
       } else {
-        localStorage.removeItem('activeWorkspaceId');
+        clearStoredWorkspaceId();
         setSelectedWorkspaceId('');
         setActiveRole(null);
       }
@@ -99,13 +186,16 @@ export default function App() {
       setAuthUser(user);
       setUserWorkspaces(workspaces);
       setIsAuthenticated(true);
+      setActivePlan(getStoredPlan());
     } catch {
+      clearStoredWorkspaceId();
+      clearStoredPlan();
       clearAuthTokens();
-      localStorage.removeItem('activeWorkspaceId');
       setAuthUser(null);
       setUserWorkspaces([]);
       setSelectedWorkspaceId('');
       setActiveRole(null);
+      setActivePlan('demo');
       setIsAuthenticated(false);
       setActiveView('landing');
     } finally {
@@ -122,6 +212,15 @@ export default function App() {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const safeAccent = hexToRgb(accentColor) ? accentColor : '#5E81AC';
+    const softAccent = lightenHex(safeAccent, 0.35);
+    root.style.setProperty('--brand-primary', safeAccent);
+    root.style.setProperty('--brand-soft', softAccent);
+    localStorage.setItem(ACCENT_STORAGE_KEY, safeAccent);
+  }, [accentColor]);
+
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
     setActiveView('dashboard');
@@ -131,6 +230,7 @@ export default function App() {
   const handleRegisterSuccess = async () => {
     setIsAuthenticated(true);
     setActiveView('dashboard');
+    setStoredPlan(getStoredPlan());
     await hydrateSession();
   };
 
@@ -138,8 +238,14 @@ export default function App() {
   const goToRegister = () => setActiveView('register');
   const goToPublicPage = (viewId) => setActiveView(viewId);
 
+  const handlePlanSelect = (planId) => {
+    if (!PLAN_ORDER.includes(planId)) return;
+    setStoredPlan(planId);
+    setActivePlan(planId);
+  };
+
   const handleWorkspaceChange = (workspaceId) => {
-    localStorage.setItem('activeWorkspaceId', workspaceId);
+    setStoredWorkspaceId(workspaceId);
     setSelectedWorkspaceId(workspaceId);
     const activeMembership = userWorkspaces.find((workspace) => String(workspace.workspaceId) === String(workspaceId));
     setActiveRole(activeMembership?.role || null);
@@ -154,12 +260,14 @@ export default function App() {
       // logout should clear local session even if server revoke call fails
     }
 
+    clearStoredWorkspaceId();
+    clearStoredPlan();
     clearAuthTokens();
-    localStorage.removeItem('activeWorkspaceId');
     setAuthUser(null);
     setUserWorkspaces([]);
     setSelectedWorkspaceId('');
     setActiveRole(null);
+    setActivePlan('demo');
     setIsAuthenticated(false);
     setActiveView('landing');
   };
@@ -167,17 +275,13 @@ export default function App() {
   const renderActiveView = () => {
     if (activeView === 'login') {
       return (
-        <MemoryRouter>
-          <Login onLoginSuccess={handleLoginSuccess} onRegisterClick={goToRegister} setActiveView={setActiveView} />
-        </MemoryRouter>
+        <Login onLoginSuccess={handleLoginSuccess} onRegisterClick={goToRegister} setActiveView={setActiveView} />
       );
     }
 
     if (activeView === 'register') {
       return (
-        <MemoryRouter>
-          <Register onRegisterSuccess={handleRegisterSuccess} onLoginClick={goToLogin} setActiveView={setActiveView} />
-        </MemoryRouter>
+        <Register onRegisterSuccess={handleRegisterSuccess} onLoginClick={goToLogin} setActiveView={setActiveView} />
       );
     }
 
@@ -204,12 +308,67 @@ export default function App() {
       );
     }
 
+    if (page.protected && !isViewAllowedByPlan(activeView)) {
+      return (
+        <div className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-accent-warm-grey">Plan Upgrade Required</h2>
+          <p className="mt-2 text-sm text-text-default">
+            Your current plan <span className="font-semibold uppercase">{activePlan}</span> does not include this feature.
+          </p>
+          <button
+            type="button"
+            onClick={() => setActiveView('pricing')}
+            className="mt-4 rounded-lg bg-primary-dusty-blue px-3 py-2 text-sm font-medium text-background-warm-off-white hover:bg-primary-soft-sky"
+          >
+            View Plans
+          </button>
+        </div>
+      );
+    }
+
     if (activeView === 'landing') {
       return <Landing onLoginClick={goToLogin} onRegisterClick={goToRegister} onNavigate={goToPublicPage} />;
     }
 
     if (activeView === 'home') {
       return <Home onRegisterClick={goToRegister} setActiveView={setActiveView} />;
+    }
+
+    if (activeView === 'pricing') {
+      return (
+        <ActiveComponent
+          setActiveView={setActiveView}
+          authUser={authUser}
+          activePlan={activePlan}
+          isAuthenticated={isAuthenticated}
+          onPlanSelect={handlePlanSelect}
+        />
+      );
+    }
+
+    if (activeView === 'settings') {
+      return (
+        <ActiveComponent
+          setActiveView={setActiveView}
+          userName={authUser?.name}
+          authUser={authUser}
+          theme={theme}
+          setTheme={setTheme}
+          accentColor={accentColor}
+          setAccentColor={setAccentColor}
+          onAuthUserUpdated={(nextUser) => setAuthUser((prev) => ({ ...(prev || {}), ...(nextUser || {}) }))}
+          onWorkspaceUpdated={(workspaceName) => {
+            if (!workspaceName) return;
+            setUserWorkspaces((prev) =>
+              prev.map((workspace) =>
+                String(workspace.workspaceId) === String(selectedWorkspaceId)
+                  ? { ...workspace, name: workspaceName }
+                  : workspace
+              )
+            );
+          }}
+        />
+      );
     }
 
     return <ActiveComponent setActiveView={setActiveView} userName={authUser?.name} authUser={authUser} />;
@@ -231,6 +390,7 @@ export default function App() {
           userName={authUser?.name}
           activeRole={activeRole}
           workspaceName={userWorkspaces.find((workspace) => String(workspace.workspaceId) === String(selectedWorkspaceId))?.name}
+          allowedViews={allowedSidebarViews}
         />
       )}
       
@@ -292,24 +452,26 @@ export default function App() {
             </section>
           )}
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeView}
-              initial={{ opacity: 0, y: 18, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.995 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            >
-              <Suspense fallback={pageLoadingState}>
-                {sessionLoading ? pageLoadingState : renderActiveView()}
-              </Suspense>
-            </motion.div>
-          </AnimatePresence>
+          <MemoryRouter>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0, y: 18, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.995 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              >
+                <Suspense fallback={pageLoadingState}>
+                  {sessionLoading ? pageLoadingState : renderActiveView()}
+                </Suspense>
+              </motion.div>
+            </AnimatePresence>
+          </MemoryRouter>
 
           <Footer />
         </div>
       </main>
+      <ToastContainer position="top-right" autoClose={3500} newestOnTop />
     </div>
   );
 }
-

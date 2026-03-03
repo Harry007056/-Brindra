@@ -1,40 +1,66 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search, Users } from 'lucide-react';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
+import api from '../api';
 
-const members = [
-  { name: 'Alice', role: 'Designer', online: true },
-  { name: 'Bob', role: 'Developer', online: false },
-  { name: 'Carlos', role: 'Product Manager', online: true },
-  { name: 'Diana', role: 'Developer', online: true },
-];
+const filters = ['All Members', 'Leaders', 'Managers', 'Members'];
 
-const filters = ['All Members', 'Designers', 'Developers', 'Product'];
+const roleFilterMap = {
+  Leaders: 'team_leader',
+  Managers: 'manager',
+  Members: 'member',
+};
 
-export default function Teams() {
+export default function Teams({ setActiveView }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [activeFilter, setActiveFilter] = useState('All Members');
   const [search, setSearch] = useState('');
-  const [teams] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const response = await api.get('/collab/users');
+        if (!isMounted) return;
+        setUsers(Array.isArray(response.data) ? response.data : []);
+      } catch {
+        if (!isMounted) return;
+        setError('Failed to load team members');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const visibleMembers = useMemo(() => {
-    const filteredByRole = members.filter((member) => {
-      if (activeFilter === 'All Members') return true;
-      if (activeFilter === 'Designers') return member.role === 'Designer';
-      if (activeFilter === 'Developers') return member.role === 'Developer';
-      return member.role === 'Product Manager';
-    });
+    const roleKey = roleFilterMap[activeFilter];
+    return users
+      .filter((member) => (!roleKey ? true : member.role === roleKey))
+      .filter((member) => String(member.name || '').toLowerCase().includes(search.toLowerCase()));
+  }, [activeFilter, search, users]);
 
-    return filteredByRole.filter((member) => member.name.toLowerCase().includes(search.toLowerCase()));
-  }, [activeFilter, search]);
+  const teams = useMemo(() => {
+    const set = new Set(users.map((user) => user.workspaceName || 'Team Workspace'));
+    return [...set];
+  }, [users]);
 
   const handleCreate = (e) => {
     e.preventDefault();
     if (!teamName.trim()) return;
-    console.log('create team', teamName);
     setModalOpen(false);
     setTeamName('');
   };
@@ -54,11 +80,14 @@ export default function Teams() {
         <button
           onClick={() => setModalOpen(true)}
           className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
+          type="button"
         >
           <Plus className="h-4 w-4" />
           New Team
         </button>
       </motion.div>
+
+      {error && <p className="rounded-xl border border-[#E07A5F]/40 bg-[#E07A5F]/10 px-3 py-2 text-sm text-[#4C566A]">{error}</p>}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
         <motion.aside
@@ -78,6 +107,7 @@ export default function Teams() {
                       ? 'bg-primary-soft-sky/25 text-[#4C566A] ring-1 ring-primary-soft-sky/40'
                       : 'text-accent-warm-grey hover:bg-background-light-sand'
                   }`}
+                  type="button"
                 >
                   {filter}
                 </button>
@@ -87,7 +117,7 @@ export default function Teams() {
 
           <div className="mt-4 rounded-xl bg-background-light-sand p-3 text-xs text-text-default">
             <p className="font-medium text-accent-warm-grey">Team Spaces</p>
-            <p className="mt-1">{teams.length} custom teams created</p>
+            <p className="mt-1">{teams.length} workspace(s) available</p>
           </div>
         </motion.aside>
 
@@ -110,15 +140,15 @@ export default function Teams() {
             </div>
           </div>
 
-          {visibleMembers.length === 0 ? (
+          {visibleMembers.length === 0 && !loading ? (
             <EmptyState message="No team members match the selected filter." />
           ) : (
             <div className="space-y-2">
-              {visibleMembers.map((member, idx) => (
-                <div key={member.name + idx} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-background-light-sand p-3">
+              {visibleMembers.map((member) => (
+                <div key={String(member._id)} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-background-light-sand p-3">
                   <div className="flex items-center gap-3">
                     <div className="grid h-10 w-10 place-items-center rounded-full bg-primary-dusty-blue text-sm font-semibold text-background-warm-off-white">
-                      {member.name.charAt(0)}
+                      {(member.name || 'N').charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-accent-warm-grey">{member.name}</p>
@@ -126,8 +156,16 @@ export default function Teams() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${member.online ? 'bg-secondary-sage-green' : 'bg-slate-300'}`} />
-                    <button className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-1.5 text-xs font-medium text-primary-dusty-blue transition hover:bg-background-warm-off-white">
+                    <span className={`h-2.5 w-2.5 rounded-full ${member.isActive === false ? 'bg-slate-300' : 'bg-secondary-sage-green'}`} />
+                    <button
+                      className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-1.5 text-xs font-medium text-primary-dusty-blue transition hover:bg-background-warm-off-white"
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('chatTarget', String(member._id || ''));
+                        localStorage.setItem('chatMode', 'direct');
+                        setActiveView?.('chat');
+                      }}
+                    >
                       Message
                     </button>
                   </div>
@@ -141,6 +179,7 @@ export default function Teams() {
       <button
         onClick={() => setModalOpen(true)}
         className="fixed bottom-6 right-6 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary-dusty-blue text-background-warm-off-white shadow-lg transition hover:bg-primary-soft-sky"
+        type="button"
       >
         <Plus className="h-5 w-5" />
       </button>
@@ -172,6 +211,8 @@ export default function Teams() {
           </form>
         </div>
       </Modal>
+
+      {loading && <p className="text-sm text-text-default">Loading teams...</p>}
     </div>
   );
 }

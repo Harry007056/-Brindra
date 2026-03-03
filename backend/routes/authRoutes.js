@@ -26,6 +26,44 @@ const signRefreshToken = (user) =>
     { expiresIn: REFRESH_EXPIRES_IN }
   );
 
+const defaultSettings = {
+  notifications: { email: true, push: false },
+  security: { twoFactorEnabled: false },
+  appearance: { theme: "system", accentColor: "#5E81AC" },
+  language: {
+    displayLanguage: "English (US)",
+    timeZone: "Asia/Kolkata",
+    dateFormat: "MM/DD/YYYY"
+  }
+};
+
+const resolveSettings = (user) => {
+  const raw = user?.settings || {};
+  return {
+    notifications: {
+      email: typeof raw?.notifications?.email === "boolean" ? raw.notifications.email : defaultSettings.notifications.email,
+      push: typeof raw?.notifications?.push === "boolean" ? raw.notifications.push : defaultSettings.notifications.push
+    },
+    security: {
+      twoFactorEnabled:
+        typeof raw?.security?.twoFactorEnabled === "boolean"
+          ? raw.security.twoFactorEnabled
+          : defaultSettings.security.twoFactorEnabled
+    },
+    appearance: {
+      theme: ["light", "dark", "system"].includes(raw?.appearance?.theme)
+        ? raw.appearance.theme
+        : defaultSettings.appearance.theme,
+      accentColor: String(raw?.appearance?.accentColor || defaultSettings.appearance.accentColor)
+    },
+    language: {
+      displayLanguage: String(raw?.language?.displayLanguage || defaultSettings.language.displayLanguage),
+      timeZone: String(raw?.language?.timeZone || defaultSettings.language.timeZone),
+      dateFormat: String(raw?.language?.dateFormat || defaultSettings.language.dateFormat)
+    }
+  };
+};
+
 const authRequired = async (req, res, next) => {
   try {
     const authHeader = String(req.headers.authorization || "");
@@ -146,7 +184,8 @@ router.get("/me", authRequired, async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      workspaceName: user.workspaceName || "Team Workspace"
     },
     workspaces: [
       {
@@ -156,6 +195,141 @@ router.get("/me", authRequired, async (req, res) => {
       }
     ]
   });
+});
+
+router.get("/settings", authRequired, async (req, res) => {
+  const user = req.user;
+  return res.json({
+    profile: {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      workspaceName: user.workspaceName || "Team Workspace"
+    },
+    settings: resolveSettings(user)
+  });
+});
+
+router.put("/settings", authRequired, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const body = req.body || {};
+
+    if (Object.prototype.hasOwnProperty.call(body, "name")) {
+      const nextName = String(body.name || "").trim();
+      if (!nextName) return res.status(400).json({ message: "name is required" });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, "email")) {
+      const nextEmail = String(body.email || "").trim().toLowerCase();
+      if (!nextEmail) return res.status(400).json({ message: "email is required" });
+      if (nextEmail !== user.email) {
+        const exists = await User.findOne({ email: nextEmail, _id: { $ne: user._id } }).select("_id");
+        if (exists) return res.status(400).json({ message: "Email already in use" });
+      }
+    }
+
+    const currentSettings = resolveSettings(user);
+    const payloadSettings = body.settings || {};
+    const nextSettings = {
+      notifications: {
+        email:
+          typeof payloadSettings?.notifications?.email === "boolean"
+            ? payloadSettings.notifications.email
+            : currentSettings.notifications.email,
+        push:
+          typeof payloadSettings?.notifications?.push === "boolean"
+            ? payloadSettings.notifications.push
+            : currentSettings.notifications.push
+      },
+      security: {
+        twoFactorEnabled:
+          typeof payloadSettings?.security?.twoFactorEnabled === "boolean"
+            ? payloadSettings.security.twoFactorEnabled
+            : currentSettings.security.twoFactorEnabled
+      },
+      appearance: {
+        theme: ["light", "dark", "system"].includes(payloadSettings?.appearance?.theme)
+          ? payloadSettings.appearance.theme
+          : currentSettings.appearance.theme,
+        accentColor: String(payloadSettings?.appearance?.accentColor || currentSettings.appearance.accentColor)
+      },
+      language: {
+        displayLanguage: String(payloadSettings?.language?.displayLanguage || currentSettings.language.displayLanguage),
+        timeZone: String(payloadSettings?.language?.timeZone || currentSettings.language.timeZone),
+        dateFormat: String(payloadSettings?.language?.dateFormat || currentSettings.language.dateFormat)
+      }
+    };
+
+    const updates = { settings: nextSettings };
+    if (Object.prototype.hasOwnProperty.call(body, "name")) {
+      updates.name = String(body.name || "").trim();
+    }
+    if (Object.prototype.hasOwnProperty.call(body, "email")) {
+      updates.email = String(body.email || "").trim().toLowerCase();
+    }
+    if (Object.prototype.hasOwnProperty.call(body, "workspaceName")) {
+      updates.workspaceName = String(body.workspaceName || "").trim() || "Team Workspace";
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        workspaceName: updatedUser.workspaceName || "Team Workspace"
+      },
+      settings: resolveSettings(updatedUser)
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || "Failed to save settings" });
+  }
+});
+
+router.put("/change-password", authRequired, async (req, res) => {
+  try {
+    const currentPassword = String(req.body?.currentPassword || "");
+    const nextPassword = String(req.body?.newPassword || "");
+
+    if (!currentPassword || !nextPassword) {
+      return res.status(400).json({ message: "currentPassword and newPassword are required" });
+    }
+
+    if (nextPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const user = await User.findById(req.user._id).select("password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    const hashed = await bcrypt.hash(nextPassword, 10);
+    await User.updateOne({ _id: req.user._id }, { $set: { password: hashed } });
+    return res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || "Failed to update password" });
+  }
 });
 
 router.post("/refresh", async (req, res) => {

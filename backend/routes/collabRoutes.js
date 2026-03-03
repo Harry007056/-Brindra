@@ -16,11 +16,13 @@ router.get("/projects", projectsController.list);
 
 router.post("/tasks", tasksController.create);
 router.get("/tasks", tasksController.list);
+router.put("/tasks/:id", tasksController.update);
 
 router.post("/messages", messagesController.create);
 router.get("/messages", messagesController.list);
 
 router.post("/files", filesController.create);
 router.get("/files", filesController.list);
+router.delete("/files/:id", filesController.remove);
 
 module.exports = router;

@@ -12,7 +12,25 @@ const userSchema = new mongoose.Schema(
     },
     workspaceName: { type: String, default: "Team Workspace", trim: true },
     avatarUrl: { type: String, default: "" },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    settings: {
+      notifications: {
+        email: { type: Boolean, default: true },
+        push: { type: Boolean, default: false }
+      },
+      security: {
+        twoFactorEnabled: { type: Boolean, default: false }
+      },
+      appearance: {
+        theme: { type: String, enum: ["light", "dark", "system"], default: "system" },
+        accentColor: { type: String, default: "#5E81AC" }
+      },
+      language: {
+        displayLanguage: { type: String, default: "English (US)" },
+        timeZone: { type: String, default: "Asia/Kolkata" },
+        dateFormat: { type: String, default: "MM/DD/YYYY" }
+      }
+    }
   },
   { timestamps: true }
 );

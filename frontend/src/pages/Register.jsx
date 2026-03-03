@@ -20,6 +20,13 @@ export default function Register({ onRegisterSuccess, onLoginClick }) {
   const [role, setRole] = useState('team_leader');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const handleBackToLogin = () => {
+    if (onLoginClick) {
+      onLoginClick();
+      return;
+    }
+    navigate('/login');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,11 +60,12 @@ export default function Register({ onRegisterSuccess, onLoginClick }) {
       setAuthTokens({
         accessToken: token,
         refreshToken: response.data?.refreshToken,
+        userEmail: response.data?.user?.email || email.trim(),
       });
       const userName = response.data?.user?.name || name.trim();
       const userEmail = response.data?.user?.email || email.trim();
-      localStorage.setItem('demoUserName', userName);
-      localStorage.setItem('demoUserEmail', userEmail);
+      sessionStorage.setItem('demoUserName', userName);
+      sessionStorage.setItem('demoUserEmail', userEmail);
 
       toast.success('Registered and logged in successfully');
       if (onRegisterSuccess) {
@@ -102,6 +110,13 @@ export default function Register({ onRegisterSuccess, onLoginClick }) {
           <div className="mb-5 space-y-1">
             <h2 className="text-2xl font-semibold text-accent-warm-grey">Create Account</h2>
             <p className="text-sm text-text-default">Set up your Brindra workspace in seconds.</p>
+            <button
+              type="button"
+              onClick={handleBackToLogin}
+              className="text-xs font-medium text-primary-dusty-blue transition hover:text-primary-soft-sky"
+            >
+              Back to Login
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">

@@ -1,22 +1,14 @@
 import { motion } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Users, 
-  FolderKanban, 
-  MessageSquare, 
-  FileBox, 
+import {
+  LayoutDashboard,
+  Users,
+  FolderKanban,
+  MessageSquare,
+  FileBox,
   Settings,
   Leaf
 } from 'lucide-react';
 
-// valid view strings for navigation
-// @typedef {'dashboard'|'team'|'projects'|'messages'|'files'|'settings'} View
-
-// Sidebar props: { activeView, setActiveView }
-// @param {{activeView: View, setActiveView: (view: View)=>void}} props
-
-// navigation items for sidebar
-// each item has {id, label, icon}
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'team', label: 'Team', icon: Users },
@@ -35,7 +27,7 @@ function getInitials(name = 'User') {
     .join('');
 }
 
-export default function Sidebar({ activeView, setActiveView, userName, activeRole, workspaceName }) {
+export default function Sidebar({ activeView, setActiveView, userName, activeRole, workspaceName, allowedViews }) {
   const initials = getInitials(userName || 'User');
   const roleLabel = activeRole
     ? activeRole
@@ -44,6 +36,10 @@ export default function Sidebar({ activeView, setActiveView, userName, activeRol
         .join(' ')
     : 'Member';
 
+  const visibleNavItems = Array.isArray(allowedViews) && allowedViews.length
+    ? navItems.filter((item) => allowedViews.includes(item.id))
+    : navItems;
+
   return (
     <motion.aside
       className="fixed inset-y-0 left-0 z-20 w-60 flex-shrink-0 overflow-auto border-r border-[#88C0D0]/25 bg-gradient-to-b from-[#5E81AC] via-[#5A7BA4] to-[#4C6A90] p-6 text-background-warm-off-white shadow-xl"
@@ -51,7 +47,6 @@ export default function Sidebar({ activeView, setActiveView, userName, activeRol
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
     >
-      {/* Logo */}
       <div className="mb-10 flex items-center gap-3">
         <div className="grid h-10 w-10 place-items-center rounded-xl bg-background-light-sand/55 ring-1 ring-[#D9E1D7]">
           <Leaf className="h-5 w-5 text-[#DFF4FA]" />
@@ -62,9 +57,8 @@ export default function Sidebar({ activeView, setActiveView, userName, activeRol
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="space-y-1 flex-1">
-        {navItems.map((item, index) => {
+      <nav className="flex-1 space-y-1">
+        {visibleNavItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
 
@@ -93,17 +87,15 @@ export default function Sidebar({ activeView, setActiveView, userName, activeRol
         })}
       </nav>
 
-      {/* User Profile */}
       <div className="mt-auto pt-6">
         <div className="flex items-center space-x-3 rounded-xl border border-[#D9E1D7] bg-background-light-sand/45 p-3 backdrop-blur-sm">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#A3BE8C] font-semibold text-[#4C566A]">{initials}</div>
           <div className="text-sm">
             <p className="font-medium text-[#F6FCFF]">{userName || 'Brindra User'}</p>
-            <p className="text-xs text-[#D7ECF4]">{workspaceName || 'Workspace'} • {roleLabel}</p>
+            <p className="text-xs text-[#D7ECF4]">{workspaceName || 'Workspace'} - {roleLabel}</p>
           </div>
         </div>
       </div>
     </motion.aside>
   );
 }
-

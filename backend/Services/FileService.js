@@ -1,4 +1,6 @@
 const FileResource = require("../models/FileResource");
+const mongoose = require("mongoose");
+const { isValidObjectId } = mongoose;
 
 class FileService {
   async addFile(payload = {}) {
@@ -27,6 +29,19 @@ class FileService {
     }
 
     return FileResource.find(filter).sort({ createdAt: -1 }).lean();
+  }
+
+  async deleteFile(fileId) {
+    if (!fileId || !isValidObjectId(fileId)) {
+      throw new Error("Valid file id is required");
+    }
+
+    const deleted = await FileResource.findByIdAndDelete(fileId).lean();
+    if (!deleted) {
+      throw new Error("File not found");
+    }
+
+    return deleted;
   }
 }
 

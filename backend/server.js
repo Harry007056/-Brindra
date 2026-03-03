@@ -1,6 +1,8 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const http = require("http");
 const app = require("./app");
+const { initSocket } = require("./socket");
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -14,7 +16,9 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
-    app.listen(PORT, () => {
+    const server = http.createServer(app);
+    initSocket(server);
+    server.listen(PORT, () => {
       console.log(`Team Collaboration backend running on port ${PORT}`);
     });
   })

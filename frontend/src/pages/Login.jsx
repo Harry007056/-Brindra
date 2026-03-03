@@ -7,14 +7,8 @@ import api, { setAuthTokens } from '../api';
 
 export default function Login({ onLoginSuccess, onRegisterClick }) {
   const navigate = useNavigate();
-  const roleOptions = [
-    { value: 'team_leader', label: 'Team Leader' },
-    { value: 'manager', label: 'Manager' },
-    { value: 'member', label: 'Member' },
-  ];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('member');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -31,7 +25,6 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
       const response = await api.post('/auth/login', {
         email: email.trim(),
         password: password.trim(),
-        role,
       });
 
       const token =
@@ -43,13 +36,15 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
         throw new Error('Token missing in login response');
       }
 
+      const userEmail = response.data?.user?.email || email.trim();
+
       setAuthTokens({
         accessToken: token,
         refreshToken: response.data?.refreshToken,
+        userEmail,
       });
 
-      const userEmail = response.data?.user?.email || email.trim();
-      localStorage.setItem('demoUserEmail', userEmail);
+      sessionStorage.setItem('demoUserEmail', userEmail);
 
       toast.success('Logged in successfully');
       if (onLoginSuccess) {
@@ -59,6 +54,9 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
       }
     } catch (error) {
       const message = error?.response?.data?.message || 'Login failed';
+      if (error?.response?.status === 401 && message.toLowerCase().includes('invalid credentials')) {
+        window.alert('Wrong password or email. Please try again.');
+      }
       toast.error(message);
     } finally {
       setLoading(false);
@@ -131,22 +129,6 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
-            </label>
-
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-text-default">Role</span>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
-                required
-              >
-                {roleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
             </label>
 
             <button

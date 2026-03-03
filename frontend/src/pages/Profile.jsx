@@ -1,18 +1,101 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Mail, MapPin, Save, Shield, Users } from 'lucide-react';
+import { toast } from 'react-toastify';
+import api from '../api';
 
-export default function Profile() {
-  const [name, setName] = useState('Alex Kim');
-  const [email, setEmail] = useState('alex@brindra.io');
-  const [role, setRole] = useState('Product Lead');
-  const [location, setLocation] = useState('San Francisco, CA');
+const roleTitle = {
+  team_leader: 'Team Leader',
+  manager: 'Manager',
+  member: 'Member',
+};
 
-  const activity = [
-    { text: 'Logged in to workspace', time: '2 hours ago' },
-    { text: 'Created project "Website Redesign"', time: 'Yesterday' },
-    { text: 'Joined Team Design Ops', time: '3 days ago' },
-  ];
+const initials = (name) =>
+  String(name || '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'NA';
+
+const fromNow = (value) => {
+  if (!value) return 'just now';
+  const diff = Date.now() - new Date(value).getTime();
+  if (diff < 60000) return 'just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+};
+
+export default function Profile({ authUser }) {
+  const [name, setName] = useState(authUser?.name || '');
+  const [email, setEmail] = useState(authUser?.email || '');
+  const [role, setRole] = useState(authUser?.role || 'member');
+  const [workspaceCount, setWorkspaceCount] = useState(0);
+  const [activity, setActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setName(authUser?.name || '');
+    setEmail(authUser?.email || '');
+    setRole(authUser?.role || 'member');
+  }, [authUser]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [usersRes, projectsRes, messagesRes] = await Promise.all([
+          api.get('/collab/users'),
+          api.get('/collab/projects'),
+          api.get('/collab/messages'),
+        ]);
+
+        if (!isMounted) return;
+
+        const users = Array.isArray(usersRes.data) ? usersRes.data : [];
+        const projects = Array.isArray(projectsRes.data) ? projectsRes.data : [];
+        const messages = Array.isArray(messagesRes.data) ? messagesRes.data : [];
+
+        const userById = users.reduce((acc, user) => {
+          acc[String(user._id)] = user;
+          return acc;
+        }, {});
+
+        setWorkspaceCount(new Set(users.map((user) => user.workspaceName || 'Team Workspace')).size);
+
+        const nextActivity = [
+          ...projects.slice(0, 2).map((project) => ({
+            text: `Project created: ${project.name}`,
+            time: fromNow(project.createdAt),
+          })),
+          ...messages.slice(0, 3).map((message) => ({
+            text: `${userById[String(message.senderId)]?.name || 'A user'} posted a message`,
+            time: fromNow(message.createdAt),
+          })),
+        ];
+
+        setActivity(nextActivity);
+      } catch {
+        if (!isMounted) return;
+        setActivity([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const roleLabel = useMemo(() => roleTitle[role] || 'Member', [role]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -36,17 +119,17 @@ export default function Profile() {
           <div className="flex flex-col items-center text-center">
             <div className="relative">
               <div className="grid h-24 w-24 place-items-center rounded-full bg-primary-dusty-blue text-2xl font-semibold text-background-warm-off-white">
-                AK
+                {initials(name)}
               </div>
-              <button className="absolute -bottom-1 -right-1 rounded-full bg-background-warm-off-white p-2 text-primary-dusty-blue shadow-sm ring-1 ring-[#88C0D0]/35">
+              <button className="absolute -bottom-1 -right-1 rounded-full bg-background-warm-off-white p-2 text-primary-dusty-blue shadow-sm ring-1 ring-[#88C0D0]/35" type="button">
                 <Camera className="h-4 w-4" />
               </button>
             </div>
-            <h2 className="mt-3 text-lg font-semibold text-accent-warm-grey">{name}</h2>
-            <p className="text-sm text-text-default">{role}</p>
+            <h2 className="mt-3 text-lg font-semibold text-accent-warm-grey">{name || 'Unknown User'}</h2>
+            <p className="text-sm text-text-default">{roleLabel}</p>
             <p className="mt-2 inline-flex items-center gap-1 text-xs text-text-default">
               <MapPin className="h-3.5 w-3.5 text-primary-dusty-blue" />
-              {location}
+              {authUser?.workspaceName || 'Workspace not set'}
             </p>
           </div>
         </motion.section>
@@ -81,23 +164,24 @@ export default function Profile() {
             <label className="space-y-1">
               <span className="text-xs font-medium text-text-default">Role</span>
               <input
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                value={roleLabel}
+                readOnly
+                className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-light-sand px-3 py-2.5 text-sm text-accent-warm-grey outline-none"
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-medium text-text-default">Location</span>
+              <span className="text-xs font-medium text-text-default">Workspace</span>
               <input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+                value={authUser?.workspaceName || 'Team Workspace'}
+                readOnly
+                className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-light-sand px-3 py-2.5 text-sm text-accent-warm-grey outline-none"
               />
             </label>
             <div className="sm:col-span-2 pt-1">
               <button
                 type="button"
                 className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
+                onClick={() => toast.info('Profile update endpoint is not available yet.')}
               >
                 <Save className="h-4 w-4" />
                 Save Changes
@@ -117,11 +201,12 @@ export default function Profile() {
           <h3 className="text-lg font-semibold text-accent-warm-grey">Activity History</h3>
           <ul className="mt-3 space-y-2">
             {activity.map((act, i) => (
-              <li key={i} className="rounded-xl bg-background-light-sand px-3 py-2">
+              <li key={`${act.text}-${i}`} className="rounded-xl bg-background-light-sand px-3 py-2">
                 <p className="text-sm text-accent-warm-grey">{act.text}</p>
                 <p className="text-xs text-text-default">{act.time}</p>
               </li>
             ))}
+            {!loading && activity.length === 0 && <li className="text-sm text-text-default">No recent activity.</li>}
           </ul>
         </motion.section>
 
@@ -138,12 +223,9 @@ export default function Profile() {
                 <Shield className="h-4 w-4 text-primary-dusty-blue" />
                 <div>
                   <p className="text-sm font-medium text-accent-warm-grey">Password</p>
-                  <p className="text-xs text-text-default">Last changed 30 days ago</p>
+                  <p className="text-xs text-text-default">Use account settings to change password</p>
                 </div>
               </div>
-              <button className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-1.5 text-xs font-medium text-primary-dusty-blue hover:bg-background-warm-off-white">
-                Change
-              </button>
             </div>
 
             <div className="flex items-center justify-between rounded-xl bg-background-light-sand p-3">
@@ -151,12 +233,9 @@ export default function Profile() {
                 <Users className="h-4 w-4 text-primary-dusty-blue" />
                 <div>
                   <p className="text-sm font-medium text-accent-warm-grey">Teams</p>
-                  <p className="text-xs text-text-default">2 active teams</p>
+                  <p className="text-xs text-text-default">{workspaceCount} active workspace(s)</p>
                 </div>
               </div>
-              <button className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-1.5 text-xs font-medium text-primary-dusty-blue hover:bg-background-warm-off-white">
-                Manage
-              </button>
             </div>
           </div>
         </motion.section>
