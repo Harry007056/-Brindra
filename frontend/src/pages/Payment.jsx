@@ -70,7 +70,14 @@ const formatInr = (value) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export default function Payment({ setActiveView, selectedPlanId = 'starter', activePlan = 'demo', onConfirmPlan }) {
+export default function Payment({
+  setActiveView,
+  selectedPlanId = 'starter',
+  activePlan = 'demo',
+  canViewActivePlan = true,
+  canPurchasePlan = true,
+  onConfirmPlan,
+}) {
   const plan = plans[selectedPlanId] || plans.starter;
   const isEnterprise = plan.id === 'enterprise';
   const [memberCount, setMemberCount] = useState(76);
@@ -92,9 +99,16 @@ export default function Payment({ setActiveView, selectedPlanId = 'starter', act
         <p className="mt-2 text-sm text-text-default">
           Review your selected plan in detail and continue payment.
         </p>
-        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary-dusty-blue">
-          Active plan: {String(activePlan).toUpperCase()}
-        </p>
+        {canViewActivePlan && (
+          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary-dusty-blue">
+            Active plan: {String(activePlan).toUpperCase()}
+          </p>
+        )}
+        {!canPurchasePlan && (
+          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-accent-muted-coral">
+            Only Team Leader or Manager can confirm plan purchases.
+          </p>
+        )}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -161,9 +175,10 @@ export default function Payment({ setActiveView, selectedPlanId = 'starter', act
           <button
             type="button"
             onClick={() => onConfirmPlan?.(plan.id)}
-            className="mt-4 w-full rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-semibold text-background-warm-off-white hover:bg-primary-soft-sky"
+            disabled={!canPurchasePlan}
+            className="mt-4 w-full rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-semibold text-background-warm-off-white hover:bg-primary-soft-sky disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Confirm and Activate Plan
+            {canPurchasePlan ? 'Confirm and Activate Plan' : 'Purchase Restricted'}
           </button>
           <button
             type="button"

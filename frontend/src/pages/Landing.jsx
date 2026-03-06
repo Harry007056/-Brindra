@@ -411,7 +411,24 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onS
               <p className="mt-2 text-xs text-text-default">{plan.limit}</p>
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                onClick={() => (onStartCheckout ? onStartCheckout(plan.id) : onNavigate ? onNavigate('pricing') : onRegisterClick())}
+                onClick={() => {
+                  if (plan.id === 'growth') {
+                    window.location.href = 'mailto:leader@brindra.com?subject=Growth%20Plan%20Inquiry';
+                    return;
+                  }
+
+                  if (onStartCheckout) {
+                    onStartCheckout(plan.id);
+                    return;
+                  }
+
+                  if (onNavigate) {
+                    onNavigate('pricing');
+                    return;
+                  }
+
+                  onRegisterClick();
+                }}
                 className={`mt-4 w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${
                   plan.popular
                     ? 'bg-primary-dusty-blue text-background-warm-off-white hover:bg-primary-soft-sky'

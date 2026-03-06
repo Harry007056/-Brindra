@@ -103,8 +103,18 @@ const addOns = [
   { title: 'Custom Onboarding', desc: 'Role-based onboarding sessions for larger teams.' },
 ];
 
-export default function Pricing({ setActiveView, activePlan = 'demo', isAuthenticated = false, onPlanSelect, onPlanCheckout }) {
+export default function Pricing({
+  setActiveView,
+  activePlan = 'demo',
+  canViewActivePlan = true,
+  canPurchasePlan = true,
+  isAuthenticated = false,
+  onPlanSelect,
+  onPlanCheckout,
+}) {
   const handleSelectPlan = (planId) => {
+    if (isAuthenticated && !canPurchasePlan) return;
+
     if (onPlanCheckout) {
       onPlanCheckout(planId);
       return;
@@ -121,9 +131,16 @@ export default function Pricing({ setActiveView, activePlan = 'demo', isAuthenti
         <p className="mt-2 text-text-default">
           Flexible plans with clear monthly context, detailed features, and transparent limitations.
         </p>
-        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary-dusty-blue">
-          Current plan: {String(activePlan).toUpperCase()}
-        </p>
+        {canViewActivePlan && (
+          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary-dusty-blue">
+            Current plan: {String(activePlan).toUpperCase()}
+          </p>
+        )}
+        {isAuthenticated && !canPurchasePlan && (
+          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-accent-muted-coral">
+            Only Team Leader or Manager can purchase a plan.
+          </p>
+        )}
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -169,13 +186,14 @@ export default function Pricing({ setActiveView, activePlan = 'demo', isAuthenti
             <button
               type="button"
               onClick={() => handleSelectPlan(plan.id)}
+              disabled={isAuthenticated && !canPurchasePlan}
               className={`mt-4 w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${
                 plan.popular
                   ? 'bg-primary-dusty-blue text-background-warm-off-white hover:bg-primary-soft-sky'
                   : 'border border-[#88C0D0]/40 bg-background-light-sand text-primary-dusty-blue hover:bg-background-warm-off-white'
-              }`}
+              } disabled:cursor-not-allowed disabled:opacity-60`}
             >
-              Proceed to Payment
+              {isAuthenticated && !canPurchasePlan ? 'Purchase Restricted' : 'Proceed to Payment'}
             </button>
           </article>
         ))}

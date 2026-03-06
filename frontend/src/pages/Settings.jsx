@@ -48,6 +48,8 @@ export default function Settings({
   accentColor,
   setAccentColor,
   activePlan = 'demo',
+  activeRole = null,
+  canViewActivePlan = true,
   onAuthUserUpdated,
   onWorkspaceUpdated,
 }) {
@@ -73,7 +75,8 @@ export default function Settings({
     timeZone: 'Asia/Kolkata',
   });
 
-  const role = authUser?.role ? authUser.role.replace('_', ' ') : 'member';
+  const effectiveRole = activeRole || authUser?.role || 'member';
+  const role = effectiveRole ? effectiveRole.replace('_', ' ') : 'member';
   const initials = (profile.name || 'User')
     .split(/\s+/)
     .slice(0, 2)
@@ -234,10 +237,12 @@ export default function Settings({
         <p className="text-text-default">Manage your account preferences and settings.</p>
       </motion.div>
 
-      <section className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-text-default">Active Plan</p>
-        <p className="mt-1 text-lg font-semibold text-primary-dusty-blue">{String(activePlan).toUpperCase()}</p>
-      </section>
+      {canViewActivePlan && (
+        <section className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-default">Active Plan</p>
+          <p className="mt-1 text-lg font-semibold text-primary-dusty-blue">{String(activePlan).toUpperCase()}</p>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         <motion.div

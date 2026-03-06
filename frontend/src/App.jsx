@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { MemoryRouter } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Moon, Sun } from 'lucide-react';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import api, { clearAuthTokens, getAccessToken, getActiveSessionId, getRefreshToken } from './api';
@@ -32,7 +32,7 @@ const pageRegistry = {
   projects: { label: 'Projects', component: Projects, protected: true, group: 'primary' },
   messages: { label: 'Messages', component: Messages, protected: true, group: 'primary' },
   files: { label: 'Files', component: Files, protected: true, group: 'primary' },
-  settings: { label: 'Settings', component: Settings, protected: true, group: 'primary', roles: ['team_leader', 'manager'] },
+  settings: { label: 'Settings', component: Settings, protected: true, group: 'primary', roles: ['team_leader', 'manager', 'member', 'user'] },
   home: { label: 'Home', component: Home, protected: false, group: 'extra' },
   features: { label: 'Features', component: Features, protected: false, group: 'extra' },
   pricing: { label: 'Pricing', component: Pricing, protected: false, group: 'extra' },
@@ -55,7 +55,7 @@ const PLAN_ORDER = ['demo', 'starter', 'growth', 'enterprise'];
 const PLAN_ALLOWED_VIEWS = {
   demo: new Set(['dashboard', 'projects']),
   starter: new Set(['dashboard', 'projects', 'team', 'messages']),
-  growth: new Set(['dashboard', 'projects', 'team', 'messages', 'files', 'chat', 'teams']),
+  growth: new Set(['dashboard', 'projects', 'team', 'messages', 'files', 'chat', 'teams', 'settings', 'profile', 'project-details']),
   enterprise: new Set(['dashboard', 'projects', 'team', 'messages', 'files', 'chat', 'teams', 'settings', 'profile', 'project-details']),
 };
 
@@ -138,6 +138,8 @@ export default function App() {
   const [accentColor, setAccentColor] = useState(resolveInitialAccent);
   const [activePlan, setActivePlan] = useState(getStoredPlan);
   const [checkoutPlanId, setCheckoutPlanId] = useState('starter');
+  const canPurchasePlan = !isAuthenticated || activeRole === 'team_leader' || activeRole === 'manager';
+  const canViewActivePlan = !isAuthenticated || activeRole === 'team_leader' || activeRole === 'manager';
 
   const isViewAllowedByPlan = useCallback(
     (viewId) => {
@@ -151,15 +153,15 @@ export default function App() {
   const visibleExtraViews = useMemo(
     () =>
       Object.entries(pageRegistry).filter(
-        ([id, page]) => isAuthenticated && page.group === 'extra' && page.protected && isViewAllowedByPlan(id)
+        ([, page]) => isAuthenticated && page.group === 'extra' && page.protected
       ),
-    [isAuthenticated, isViewAllowedByPlan]
+    [isAuthenticated]
   );
 
   const allowedSidebarViews = useMemo(() => {
     const baseViews = ['dashboard', 'team', 'projects', 'messages', 'files', 'settings'];
-    return baseViews.filter((viewId) => isViewAllowedByPlan(viewId));
-  }, [isViewAllowedByPlan]);
+    return baseViews;
+  }, []);
 
   const hydrateSession = useCallback(async () => {
     if (!getAccessToken()) {
@@ -254,11 +256,21 @@ export default function App() {
 
   const handlePlanCheckout = (planId) => {
     if (!PLAN_ORDER.includes(planId)) return;
+    if (isAuthenticated && !canPurchasePlan) {
+      toast.error('Only Team Leader or Manager can purchase a plan.');
+      setActiveView('pricing');
+      return;
+    }
     setCheckoutPlanId(planId);
     setActiveView('payment');
   };
 
   const handlePlanConfirm = (planId) => {
+    if (isAuthenticated && !canPurchasePlan) {
+      toast.error('Only Team Leader or Manager can purchase a plan.');
+      setActiveView('pricing');
+      return;
+    }
     handlePlanSelect(planId);
     setActiveView('settings');
   };
@@ -389,6 +401,9 @@ export default function App() {
           setActiveView={setActiveView}
           authUser={authUser}
           activePlan={activePlan}
+          activeRole={activeRole}
+          canViewActivePlan={canViewActivePlan}
+          canPurchasePlan={canPurchasePlan}
           isAuthenticated={isAuthenticated}
           onPlanSelect={handlePlanSelect}
           onPlanCheckout={handlePlanCheckout}
@@ -402,6 +417,9 @@ export default function App() {
           setActiveView={setActiveView}
           selectedPlanId={checkoutPlanId}
           activePlan={activePlan}
+          activeRole={activeRole}
+          canViewActivePlan={canViewActivePlan}
+          canPurchasePlan={canPurchasePlan}
           onConfirmPlan={handlePlanConfirm}
         />
       );
@@ -418,6 +436,8 @@ export default function App() {
           accentColor={accentColor}
           setAccentColor={setAccentColor}
           activePlan={activePlan}
+          activeRole={activeRole}
+          canViewActivePlan={canViewActivePlan}
           onAuthUserUpdated={(nextUser) => setAuthUser((prev) => ({ ...(prev || {}), ...(nextUser || {}) }))}
           onWorkspaceUpdated={(workspaceName) => {
             if (!workspaceName) return;
