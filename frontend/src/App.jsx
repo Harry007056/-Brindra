@@ -17,6 +17,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 const Home = lazy(() => import('./pages/Home'));
 const Features = lazy(() => import('./pages/Features'));
 const Pricing = lazy(() => import('./pages/Pricing'));
+const Payment = lazy(() => import('./pages/Payment'));
 const AboutUs = lazy(() => import('./pages/AboutUs'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -35,6 +36,7 @@ const pageRegistry = {
   home: { label: 'Home', component: Home, protected: false, group: 'extra' },
   features: { label: 'Features', component: Features, protected: false, group: 'extra' },
   pricing: { label: 'Pricing', component: Pricing, protected: false, group: 'extra' },
+  payment: { label: 'Payment', component: Payment, protected: false, group: 'extra' },
   aboutus: { label: 'About Us', component: AboutUs, protected: false, group: 'extra' },
   landing: { label: 'Landing', component: Landing, protected: false, group: 'extra' },
   profile: { label: 'Profile', component: Profile, protected: true, group: 'extra' },
@@ -135,6 +137,7 @@ export default function App() {
   const [theme, setTheme] = useState(resolveInitialTheme);
   const [accentColor, setAccentColor] = useState(resolveInitialAccent);
   const [activePlan, setActivePlan] = useState(getStoredPlan);
+  const [checkoutPlanId, setCheckoutPlanId] = useState('starter');
 
   const isViewAllowedByPlan = useCallback(
     (viewId) => {
@@ -236,12 +239,28 @@ export default function App() {
 
   const goToLogin = () => setActiveView('login');
   const goToRegister = () => setActiveView('register');
-  const goToPublicPage = (viewId) => setActiveView(viewId);
+  const goToPublicPage = (viewId, payload = null) => {
+    if (viewId === 'payment' && payload?.planId && PLAN_ORDER.includes(payload.planId)) {
+      setCheckoutPlanId(payload.planId);
+    }
+    setActiveView(viewId);
+  };
 
   const handlePlanSelect = (planId) => {
     if (!PLAN_ORDER.includes(planId)) return;
     setStoredPlan(planId);
     setActivePlan(planId);
+  };
+
+  const handlePlanCheckout = (planId) => {
+    if (!PLAN_ORDER.includes(planId)) return;
+    setCheckoutPlanId(planId);
+    setActiveView('payment');
+  };
+
+  const handlePlanConfirm = (planId) => {
+    handlePlanSelect(planId);
+    setActiveView('settings');
   };
 
   const handleWorkspaceChange = (workspaceId) => {
@@ -286,15 +305,38 @@ export default function App() {
     }
 
     const page = pageRegistry[activeView];
-    if (!page) return <Landing onLoginClick={goToLogin} onRegisterClick={goToRegister} onNavigate={goToPublicPage} />;
+    if (!page) {
+      return (
+        <Landing
+          onLoginClick={goToLogin}
+          onRegisterClick={goToRegister}
+          onNavigate={goToPublicPage}
+          onStartCheckout={handlePlanCheckout}
+        />
+      );
+    }
 
     if (page.protected && !isAuthenticated) {
-      return <Landing onLoginClick={goToLogin} onRegisterClick={goToRegister} onNavigate={goToPublicPage} />;
+      return (
+        <Landing
+          onLoginClick={goToLogin}
+          onRegisterClick={goToRegister}
+          onNavigate={goToPublicPage}
+          onStartCheckout={handlePlanCheckout}
+        />
+      );
     }
 
     const ActiveComponent = page.component;
     if (!ActiveComponent) {
-      return <Landing onLoginClick={goToLogin} onRegisterClick={goToRegister} onNavigate={goToPublicPage} />;
+      return (
+        <Landing
+          onLoginClick={goToLogin}
+          onRegisterClick={goToRegister}
+          onNavigate={goToPublicPage}
+          onStartCheckout={handlePlanCheckout}
+        />
+      );
     }
 
     if (page.roles && !page.roles.includes(activeRole)) {
@@ -327,7 +369,14 @@ export default function App() {
     }
 
     if (activeView === 'landing') {
-      return <Landing onLoginClick={goToLogin} onRegisterClick={goToRegister} onNavigate={goToPublicPage} />;
+      return (
+        <Landing
+          onLoginClick={goToLogin}
+          onRegisterClick={goToRegister}
+          onNavigate={goToPublicPage}
+          onStartCheckout={handlePlanCheckout}
+        />
+      );
     }
 
     if (activeView === 'home') {
@@ -342,6 +391,18 @@ export default function App() {
           activePlan={activePlan}
           isAuthenticated={isAuthenticated}
           onPlanSelect={handlePlanSelect}
+          onPlanCheckout={handlePlanCheckout}
+        />
+      );
+    }
+
+    if (activeView === 'payment') {
+      return (
+        <ActiveComponent
+          setActiveView={setActiveView}
+          selectedPlanId={checkoutPlanId}
+          activePlan={activePlan}
+          onConfirmPlan={handlePlanConfirm}
         />
       );
     }
@@ -356,6 +417,7 @@ export default function App() {
           setTheme={setTheme}
           accentColor={accentColor}
           setAccentColor={setAccentColor}
+          activePlan={activePlan}
           onAuthUserUpdated={(nextUser) => setAuthUser((prev) => ({ ...(prev || {}), ...(nextUser || {}) }))}
           onWorkspaceUpdated={(workspaceName) => {
             if (!workspaceName) return;

@@ -114,6 +114,7 @@ const faqs = [
 
 const pricingPlans = [
   {
+    id: 'demo',
     name: 'Demo',
     price: 'Free',
     period: '7-day trial',
@@ -126,8 +127,9 @@ const pricingPlans = [
     popular: false,
   },
   {
+    id: 'starter',
     name: 'Starter',
-    price: '$5',
+    price: '₹420',
     period: 'per user / month',
     desc: 'For small teams getting started.',
     detail: 'Practical collaboration essentials for small active teams.',
@@ -138,8 +140,9 @@ const pricingPlans = [
     popular: false,
   },
   {
+    id: 'growth',
     name: 'Growth',
-    price: '$12',
+    price: '₹1,000',
     period: 'per user / month',
     desc: 'For teams scaling delivery and workflows.',
     detail: 'Faster execution with private chat, files, and team spaces.',
@@ -150,6 +153,7 @@ const pricingPlans = [
     popular: true,
   },
   {
+    id: 'enterprise',
     name: 'Enterprise',
     price: 'Custom',
     period: 'annual contract',
@@ -180,7 +184,7 @@ const stagger = {
   show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
 };
 
-export default function Landing({ onLoginClick, onRegisterClick, onNavigate }) {
+export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onStartCheckout }) {
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -190,7 +194,6 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate }) {
   const heroY = useTransform(scrollYProgress, [0, 0.35], [0, -45]);
   const orbDriftX = useTransform(scrollYProgress, [0, 0.6], [0, 30]);
   const orbDriftY = useTransform(scrollYProgress, [0, 0.6], [0, -20]);
-
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <motion.nav
@@ -267,12 +270,6 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate }) {
                 className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-semibold text-background-warm-off-white"
               >
                 Start Free Trial
-                <motion.span animate={{ x: [0, 3, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
-                  <ArrowRight className="h-4 w-4" />
-                </motion.span>
-              </motion.button>
-              <motion.button whileHover={{ y: -2 }} className="rounded-xl border border-[#88C0D0]/40 bg-background-warm-off-white px-4 py-2.5 text-sm font-semibold text-primary-dusty-blue hover:bg-background-light-sand">
-                Watch Demo
               </motion.button>
             </motion.div>
 
@@ -414,7 +411,7 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate }) {
               <p className="mt-2 text-xs text-text-default">{plan.limit}</p>
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                onClick={() => (onNavigate ? onNavigate('pricing') : onRegisterClick())}
+                onClick={() => (onStartCheckout ? onStartCheckout(plan.id) : onNavigate ? onNavigate('pricing') : onRegisterClick())}
                 className={`mt-4 w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${
                   plan.popular
                     ? 'bg-primary-dusty-blue text-background-warm-off-white hover:bg-primary-soft-sky'

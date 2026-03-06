@@ -24,7 +24,7 @@ const plans = [
   {
     id: 'starter',
     name: 'Starter',
-    price: '$5',
+    price: '\u20B9420',
     period: 'per user / month',
     desc: 'Small teams testing collaboration in real projects.',
     detail: 'Run live projects with core messaging and ownership while keeping cost predictable for early teams.',
@@ -46,7 +46,7 @@ const plans = [
   {
     id: 'growth',
     name: 'Growth',
-    price: '$12',
+    price: '\u20B91,000',
     period: 'per user / month',
     desc: 'For teams scaling projects, communication, and workflows.',
     detail: 'Unlock faster coordination with richer collaboration modules and better visibility across active work.',
@@ -103,14 +103,15 @@ const addOns = [
   { title: 'Custom Onboarding', desc: 'Role-based onboarding sessions for larger teams.' },
 ];
 
-export default function Pricing({ setActiveView, activePlan = 'demo', isAuthenticated = false, onPlanSelect }) {
+export default function Pricing({ setActiveView, activePlan = 'demo', isAuthenticated = false, onPlanSelect, onPlanCheckout }) {
   const handleSelectPlan = (planId) => {
-    onPlanSelect?.(planId);
-    if (isAuthenticated) {
-      setActiveView?.('dashboard');
-    } else {
-      setActiveView?.('register');
+    if (onPlanCheckout) {
+      onPlanCheckout(planId);
+      return;
     }
+
+    onPlanSelect?.(planId);
+    setActiveView?.(isAuthenticated ? 'dashboard' : 'register');
   };
 
   return (
@@ -174,7 +175,7 @@ export default function Pricing({ setActiveView, activePlan = 'demo', isAuthenti
                   : 'border border-[#88C0D0]/40 bg-background-light-sand text-primary-dusty-blue hover:bg-background-warm-off-white'
               }`}
             >
-              {plan.cta}
+              Proceed to Payment
             </button>
           </article>
         ))}
