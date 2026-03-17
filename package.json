@@ -7,7 +7,10 @@
     "dev": "cd Backend && npm run dev",
     "start": "node Backend/server.js",
     "seed:brindra": "cd Backend && npm run seed:brindra",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "cd frontend && npm run build",
+    "build:frontend": "cd frontend && npm ci && npm run build",
+    "preview": "cd frontend && npm run preview"
   },
   "keywords": ["collaboration", "team", "backend"],
   "author": "",
