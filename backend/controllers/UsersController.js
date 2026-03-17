@@ -17,3 +17,25 @@ exports.list = async (_req, res) => {
     return res.status(500).json({ message: "Failed to fetch users" });
   }
 };
+
+exports.assignPlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { planId } = req.body;
+    if (!planId) {
+      return res.status(400).json({ message: "planId is required" });
+    }
+    const user = await userService.assignPlan(id, planId);
+    return res.json({
+      message: "Plan assigned successfully",
+      user: {
+        id: user._id,
+        currentPlan: user.currentPlan,
+        planActivatedAt: user.planActivatedAt,
+        planExpiryDate: user.planExpiryDate
+      }
+    });
+  } catch (err) {
+    return res.status(400).json({ message: err.message || "Failed to assign plan" });
+  }
+};

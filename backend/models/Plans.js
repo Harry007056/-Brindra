@@ -18,6 +18,14 @@ const planSchema = new mongoose.Schema({
   description: {
     type: String,
     required: true
+  },
+  isDemo: {
+    type: Boolean,
+    default: false
+  },
+  durationDays: {
+    type: Number,
+    default: 30 // null or -1 for demo
   }
 }, {
   timestamps: true

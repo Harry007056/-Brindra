@@ -7,6 +7,7 @@ const Project = require("../models/Project");
 const TaskItem = require("../models/TaskItem");
 const Message = require("../models/Message");
 const FileResource = require("../models/FileResource");
+const Plan = require("../models/Plans");
 
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -99,6 +100,28 @@ async function seed() {
       password: "Password123!",
     }),
   ]);
+
+  // Seed plans
+  await Plan.deleteMany({});
+  const demoPlan = await Plan.create({
+    name: "Demo Plan",
+    maxBranches: 3,
+    price: 0,
+    description: "14-day free trial with limited features",
+    isDemo: true,
+    durationDays: -1
+  });
+  const proPlan = await Plan.create({
+    name: "Pro Plan",
+    maxBranches: 0, // unlimited
+    price: 29.99,
+    description: "Unlimited branches, advanced features",
+    isDemo: false,
+    durationDays: 30
+  });
+
+  console.log("Demo Plan ID:", demoPlan._id);
+  console.log("Pro Plan ID:", proPlan._id);
 
   const projectA = await upsertProject({
     name: "Brindra Web App",

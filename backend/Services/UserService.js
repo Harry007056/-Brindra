@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 
+const Plan = require("../models/Plans");
+
 class UserService {
   async createUser(payload = {}) {
     const name = String(payload.name || "").trim();
@@ -38,6 +40,28 @@ class UserService {
       .sort({ createdAt: -1 })
       .lean();
   }
+
+  async assignPlan(userId, planId) {
+    const user = await User.findById(userId);
+    if (!user) throw new Error("User not found");
+
+    const plan = await Plan.findById(planId);
+    if (!plan) throw new Error("Plan not found");
+
+    user.currentPlan = plan._id;
+    user.planActivatedAt = new Date();
+    
+    if (!plan.isDemo && plan.durationDays > 0) {
+      const msInDay = 24 * 60 * 60 * 1000;
+      user.planExpiryDate = new Date(Date.now() + plan.durationDays * msInDay);
+    } else {
+      user.planExpiryDate = null; // Demo: no expiry
+    }
+
+    await user.save();
+    return user;
+  }
 }
+
 
 module.exports = new UserService();

@@ -13,6 +13,12 @@ const userSchema = new mongoose.Schema(
     workspaceName: { type: String, default: "Team Workspace", trim: true },
     avatarUrl: { type: String, default: "" },
     isActive: { type: Boolean, default: true },
+    currentPlan: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Plan' 
+    },
+    planActivatedAt: { type: Date },
+    planExpiryDate: { type: Date },
     settings: {
       notifications: {
         email: { type: Boolean, default: true },

@@ -3,6 +3,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
 const fs = require("fs");
 const path = require("path");
 const User = require("../models/User");
+const Plan = require("../models/Plans");
 const Staff = require("../models/Staff");
 
 const TRIAL_DAYS = 14;
@@ -82,10 +83,23 @@ module.exports = (allowedRoles = []) => {
 
         if (adminUserId) {
           const adminUser = await User.findById(adminUserId).select(
-            "selectedPlanId trialStartAt trialEndsAt demoAccessUntil createdAt"
-          );
+            "currentPlan planExpiryDate trialStartAt trialEndsAt demoAccessUntil createdAt"
+          ).populate('currentPlan');
 
-          if (adminUser && !adminUser.selectedPlanId) {
+          // Check paid plan expiry first
+          if (adminUser.currentPlan && adminUser.planExpiryDate && 
+              Date.now() > adminUser.planExpiryDate.getTime() && 
+              !adminUser.currentPlan.isDemo) {
+            return res.status(403).json({
+              code: "PLAN_EXPIRED",
+              message: "Your plan has expired. Please renew to continue.",
+              expiresAt: adminUser.planExpiryDate,
+              planName: adminUser.currentPlan.name
+            });
+          }
+
+          // Existing trial/demo logic if no valid paid plan
+          if (!adminUser.currentPlan) {
             const demoActive = hasActiveDemoAccess(adminUser);
             if (demoActive) {
               debugLog(`AUTH SUCCESS: Demo access active | Role: ${decoded.role} | Path: ${req.originalUrl}`);
