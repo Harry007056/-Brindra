@@ -1,10 +1,7 @@
-# Netlify Fix Progress
+# Netlify Deploy Fix - Vite Override Conflict
 
 ## Steps:
-1. [x] Update root package.json "build" script to `cd frontend && npm ci && npm run build`
-2. [x] Update frontend/netlify.toml command to `npm ci && npm run build`
-3. [x] Create root netlify.toml with base=frontend, publish=dist
-4. [x] Update TODO-netlify.md with UI instructions
-5. [ ] Test local `npm run build`
-6. [ ] Netlify UI: Set Base directory `frontend`, Publish `dist`
-7. [ ] Deploy and verify
+- [x] 1. Edit frontend/package.json: Align vite devDependency to "^8.0.0-beta.13"
+- [x] 2. Run `npm run build` at root to verify fix locally
+- [ ] 3. Commit and push changes for Netlify redeploy
+- [ ] 4. Verify Netlify build succeeds
