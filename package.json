@@ -5,7 +5,7 @@
   "main": "Backend/server.js",
   "scripts": {
     "dev": "cd Backend && npm run dev",
-    "start": "node Backend/server.js",
+    "start": "cd Backend && npm start",
     "seed:brindra": "cd Backend && npm run seed:brindra",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "cd frontend && npm ci && npm run build",

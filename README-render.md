@@ -10,7 +10,7 @@
 ## Render Setup (render.com)
 1. **Connect GitHub repo** → New → Web Service
 2. **Settings:**
-   - **Root Directory:** `Backend` (or root if detected)
+   - **Root Directory:** `Backend` ← **CRITICAL: Set this first to auto-fix path issues**
    - **Build Command:** (blank/auto: `npm install`)
    - **Start Command:** `npm start`
    - **Node Version:** 20 (LTS)

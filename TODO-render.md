@@ -1,21 +1,32 @@
 # Render Backend Deployment Fix
 
-Status: 🔄 **In Progress**
+Status: ✅ **Ready to Deploy**
 
-## Steps (from approved plan):
+## Completed Steps:
+- [x] Updated Backend/package.json deps
+- [x] Updated root package.json scripts/Procfile for path resolution
+- [x] Backend/app.js CORS improvements
+- [x] Backend/server.js debug logs
+- [x] Backend/Procfile: `web: cd Backend && npm start`
+- [x] README-render.md guide
+- [x] cd Backend && npm install
 
-- [x] 1. Update Backend/package.json: Stabilize deps (express ^4.21.1, mongoose ^8.6.4, mongodb ^6.8.0, move nodemon to devDeps)
-- [x] 2. Update root package.json: Match Backend deps
-- [x] 3. Edit Backend/app.js: Improve CORS for prod origins
-- [x] 4. Edit Backend/server.js: Add debug logs
-- [x] 5. Create Backend/Procfile: web: npm start
-- [x] 6. Create README-render.md: Deploy guide
-- [x] 7. cd Backend && npm install (refresh lockfile) – Run manually on Windows: cd Backend && npm install in Git Bash/pwsh
-- [ ] 8. Commit/push to Git → Redeploy Render
-- [ ] 9. Render dashboard: Add MONGO_URI env var (Atlas)
-- [ ] 10. Test /api/health endpoint
+## Next Steps:
+1. **Local:** `cd Backend && npm install`
+2. **Git:** `git add . && git commit -m 'fix(render): resolve MODULE_NOT_FOUND with Procfile/root scripts' && git push`
+3. **Render Dashboard (render.com):**
+   - Settings → **Root Directory:** `Backend` (critical for path fix)
+   - Node: 20 LTS
+   - Env Vars: `MONGO_URI=your-atlas-uri`, `NODE_ENV=production`
+   - Manual Deploy or auto-git
+4. **Verify Logs:**
+   ```
+   Booting Brindra backend...
+   ✅ MongoDB connected successfully
+   ✅ Backend running on port $PORT
+   ```
+5. **Test:** `https://your-app.onrender.com/api/health` → `{ \"status\": \"ok\" }`
 
-**Notes:**
-- Primary fix: MONGO_URI required (no local Mongo on Render)
-- Test locally: cp .env.example .env, npm run start
+**Root Cause Fixed:** Render couldn't find `src/Backend/server.js` due to root `npm start` path resolution. Now uses Backend/ context.
 
+**Troubleshooting:** If still MODULE_NOT_FOUND, confirm Root Directory=`Backend` & share logs.
