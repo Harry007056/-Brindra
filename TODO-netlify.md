@@ -1,29 +1,30 @@
-# Netlify Deployment Guide
+# Netlify Deployment Guide & Fix
 
-Status: ✅ **Ready**
+Status: 🔧 **Netlify Deploy Fixed - Updated for vite not found error**
 
-## Config Files Created
-- `frontend/netlify.toml`: Build command `npm run build`, publish `dist`, SPA redirects `/*` → `/index.html`
+## Repo Changes Applied
+- `package.json`: build → `cd frontend && npm ci && npm run build`
+- `frontend/netlify.toml` & `netlify.toml`: command → `npm ci && npm run build`
+- Base directory: frontend, Publish: dist
 
-## Deploy Steps
-1. Install CLI: `npm install -g netlify-cli`
-2. Login: `netlify login`
-3. From project root:
-   ```
-   cd frontend
-   netlify deploy --prod --dir=dist
-   ```
-   Or build first: `npm run build` then deploy.
+## Netlify UI Settings (Dashboard > Build & deploy > Edit settings)
+1. **Base directory**: `frontend`
+2. **Build command**: `npm ci && npm run build` (or leave blank for netlify.toml)
+3. **Publish directory**: `dist`
+4. **Environment variables**: Add if needed (e.g., VITE_API_URL)
 
-## Settings (Netlify Dashboard)
-- Build command: `npm run build`
-- Publish directory: `dist`
-- Framework: Vite
+## Deploy Steps (CLI alternative)
+1. `npm install -g netlify-cli`
+2. `netlify login`
+3. `npm run build`
+4. `netlify deploy --prod --dir=frontend/dist`
 
-## Post-Deploy
-- Update `frontend/src/api.js` backend URL (e.g., env REACT_APP_API_URL).
-- Backend host separately.
-- Test: SPA routes (React Router), API calls.
+## Test Locally
+`npm run build` (root) - check `frontend/dist` generated, no vite error.
 
-**Netlify URL:** After deploy (e.g., https://brindra.netlify.app)
+## Post-Deploy Checks
+- SPA routing (React Router)
+- API calls (update `frontend/src/api.js` baseURL if needed)
+- Backend hosted separately (e.g., Railway/Render)
 
+**Expected: Successful build with vite, site at https://your-site.netlify.app**
