@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import AuthProvider from './components/AuthProvider';
 import { useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
@@ -25,6 +25,13 @@ import Profile from './pages/Profile';
 import ProjectDetails from './pages/ProjectDetails';
 import Spinner from './components/Spinner';
 
+const LandingWrapper = () => {
+  const navigate = useNavigate();
+  const handleLoginClick = () => navigate('/login');
+  const handleRegisterClick = () => navigate('/register');
+  return <Landing onLoginClick={handleLoginClick} onRegisterClick={handleRegisterClick} />;
+};
+
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, sessionLoading } = useAuth();
   
@@ -39,7 +46,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<LandingWrapper />} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -69,3 +76,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
