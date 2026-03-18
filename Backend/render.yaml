@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: brindra-backend
+    env: node
+    rootDir: /
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false  # Set manually in dashboard
+      - key: JWT_SECRET
+        generateValue: true
+    autoDeploy: true
