@@ -47,11 +47,7 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
       sessionStorage.setItem('demoUserEmail', userEmail);
 
       toast.success('Logged in successfully');
-      if (onLoginSuccess) {
-        onLoginSuccess(response.data);
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     } catch (error) {
       const message = error?.response?.data?.message || 'Login failed';
       if (error?.response?.status === 401 && message.toLowerCase().includes('invalid credentials')) {

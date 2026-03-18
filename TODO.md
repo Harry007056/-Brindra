@@ -1,32 +1,12 @@
-# Fix Landing Page Login/Register Buttons (Completed ✅)
+# Task: Implement login redirect to dashboard with credentials
 
-## Changes Made:
-- ✅ Added LandingWrapper in App.jsx providing onLoginClick → /login, onRegisterClick → /register
-- ✅ Added vite proxy in vite.config.js: /api → http://localhost:5000 (fixes API calls)
-- Files updated: `frontend/src/App.jsx`, `frontend/vite.config.js`
+## Steps:
+- [x] 1. Analyze project structure and files (search_files, read_files)
+- [x] 2. Create detailed edit plan and get user approval
+- [ ] 3. Edit frontend/src/pages/Login.jsx to always navigate to /dashboard after successful login
+- [ ] 4. Test the login flow (run dev server, manual test)
+- [ ] 5. Verify ProtectedRoute, auth persistence, dashboard data loads with credentials
+- [ ] 6. Mark complete
 
-## Status: Fixed!
-
-**Test now:**
-1. `cd frontend && npm run dev` (applies proxy)
-2. Visit http://localhost:5173 → Landing page
-3. Click **Log In/Sign Up** buttons → should navigate /login /register
-4. Submit login/register forms → API calls succeed (Network tab), toasts show
-
-**Test Credentials (create first):**
-```
-curl -X POST http://localhost:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test User","email":"test@brindra.com","password":"password123","role":"team_leader","workspaceName":"Test Workspace"}'
-```
-Then login: test@brindra.com / password123 → redirects dashboard.
-
-**Next manual steps:**
-- Restart dev server
-- Test navigation + API
-- Create test user if needed
-
-Landing buttons and auth flow now fully functional!
-
-CLI to demo: `cd frontend && npm run dev`
+**Status**: Editing in progress...
 
