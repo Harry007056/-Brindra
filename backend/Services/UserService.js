@@ -50,6 +50,7 @@ class UserService {
 
     user.currentPlan = plan._id;
     user.planActivatedAt = new Date();
+    if (plan.customMembers) user.customPlanMembers = plan.customMembers;
     
     if (!plan.isDemo && plan.durationDays > 0) {
       const msInDay = 24 * 60 * 60 * 1000;
@@ -61,7 +62,29 @@ class UserService {
     await user.save();
     return user;
   }
-}
 
+  async createCustomEnterprisePlan(userId, members, price) {
+    if (members < 76) throw new Error("Enterprise requires minimum 76 members");
+    const user = await User.findById(userId);
+    if (!user) throw new Error("User not found");
+
+    const customPlan = new Plan({
+      name: `Enterprise - ${user.workspaceName || 'Custom Team'} (${members} members)`,
+      maxBranches: 0,
+      price,
+      customMembers: members,
+      customPrice: price,
+      baseMembers: 76,
+      basePricePerMember: 13,
+      description: "Custom Enterprise plan with dynamic team sizing",
+      isDemo: false,
+      durationDays: 365 // Annual
+    });
+
+    await customPlan.save();
+    await this.assignPlan(userId, customPlan._id);
+    return customPlan;
+  }
+}
 
 module.exports = new UserService();

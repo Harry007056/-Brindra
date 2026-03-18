@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Calendar, CheckCircle2, Clock, Edit3, MessageSquare, Trash2, Users } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -18,7 +19,9 @@ const fromNow = (value) => {
   return `${days}d ago`;
 };
 
-export default function ProjectDetails({ setActiveView, authUser }) {
+export default function ProjectDetails({ authUser }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
@@ -29,13 +32,13 @@ export default function ProjectDetails({ setActiveView, authUser }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const projectId = localStorage.getItem('selectedProject');
+  // projectId from route params
 
   useEffect(() => {
     let isMounted = true;
 
     const load = async () => {
-      if (!projectId) {
+      if (!id) {
         setLoading(false);
         return;
       }
@@ -43,7 +46,7 @@ export default function ProjectDetails({ setActiveView, authUser }) {
       setLoading(true);
       setError('');
       try {
-        const safeQuery = isMongoObjectId(projectId) ? { params: { projectId } } : undefined;
+        const safeQuery = isMongoObjectId(id) ? { params: { projectId: id } } : undefined;
         const [projectsRes, tasksRes, usersRes] = await Promise.all([
           api.get('/collab/projects'),
           api.get('/collab/tasks', safeQuery),
@@ -53,9 +56,9 @@ export default function ProjectDetails({ setActiveView, authUser }) {
         if (!isMounted) return;
 
         const projects = Array.isArray(projectsRes.data) ? projectsRes.data : [];
-        setProject(projects.find((item) => String(item._id) === String(projectId)) || null);
+        setProject(projects.find((item) => String(item._id) === String(id)) || null);
         const allTasks = Array.isArray(tasksRes.data) ? tasksRes.data : [];
-        setTasks(allTasks.filter((item) => String(item.projectId) === String(projectId)));
+        setTasks(allTasks.filter((item) => String(item.projectId) === String(id)));
         setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
       } catch {
         if (!isMounted) return;
@@ -69,7 +72,7 @@ export default function ProjectDetails({ setActiveView, authUser }) {
     return () => {
       isMounted = false;
     };
-  }, [projectId]);
+  }, [id]);
 
   const userById = useMemo(() => {
     return users.reduce((acc, user) => {
@@ -106,21 +109,21 @@ export default function ProjectDetails({ setActiveView, authUser }) {
   }, [users]);
 
   const reloadTasks = async () => {
-    if (!projectId) return;
-    const safeQuery = isMongoObjectId(projectId) ? { params: { projectId } } : undefined;
+    if (!id) return;
+    const safeQuery = isMongoObjectId(id) ? { params: { projectId: id } } : undefined;
     const response = await api.get('/collab/tasks', safeQuery);
     const allTasks = Array.isArray(response.data) ? response.data : [];
-    setTasks(allTasks.filter((item) => String(item.projectId) === String(projectId)));
+    setTasks(allTasks.filter((item) => String(item.projectId) === String(id)));
   };
 
   const handleCreateTask = async () => {
     const title = newTaskTitle.trim();
-    if (!title || !projectId) return;
+    if (!title || !id) return;
 
     try {
       setTaskActionLoading(true);
       await api.post('/collab/tasks', {
-        projectId,
+        projectId: id,
         title,
         assigneeId: newTaskAssigneeId || null,
         dueDate: newTaskDueDate || null,
@@ -151,16 +154,7 @@ export default function ProjectDetails({ setActiveView, authUser }) {
     }
   };
 
-  if (!projectId) {
-    return (
-      <div className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-5 shadow-sm">
-        <p className="text-sm text-text-default">No project selected.</p>
-        <button className="mt-2 text-sm text-primary-dusty-blue" onClick={() => setActiveView('projects')} type="button">
-          Back to Projects
-        </button>
-      </div>
-    );
-  }
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -174,7 +168,7 @@ export default function ProjectDetails({ setActiveView, authUser }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <button
             className="mb-2 text-sm text-primary-dusty-blue hover:text-primary-soft-sky"
-            onClick={() => setActiveView('projects')}
+            onClick={() => navigate('/projects')}
             type="button"
           >
             Back
@@ -377,7 +371,7 @@ export default function ProjectDetails({ setActiveView, authUser }) {
           </div>
           <button
             type="button"
-            onClick={() => setActiveView('messages')}
+            onClick={() => navigate('/messages')}
             className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
           >
             <MessageSquare className="h-4 w-4" />

@@ -19,6 +19,11 @@ const userSchema = new mongoose.Schema(
     },
     planActivatedAt: { type: Date },
     planExpiryDate: { type: Date },
+    customPlanMembers: {
+      type: Number,
+      min: 1,
+      default: null
+    },
     settings: {
       notifications: {
         email: { type: Boolean, default: true },

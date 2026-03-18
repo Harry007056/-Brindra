@@ -15,6 +15,23 @@ const planSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  customMembers: {
+    type: Number,
+    min: 76,
+    default: null
+  },
+  customPrice: {
+    type: Number,
+    default: null
+  },
+  baseMembers: {
+    type: Number,
+    default: 76
+  },
+  basePricePerMember: {
+    type: Number,
+    default: 13
+  },
   description: {
     type: String,
     required: true

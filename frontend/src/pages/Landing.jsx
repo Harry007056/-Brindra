@@ -1,4 +1,5 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, FolderKanban, MessageSquare, Rocket, Sparkles, Users } from 'lucide-react';
 
 const features = [
@@ -185,6 +186,7 @@ const stagger = {
 };
 
 export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onStartCheckout }) {
+  const navigate = useNavigate();
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -416,18 +418,15 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onS
                     window.location.href = 'mailto:leader@brindra.com?subject=Growth%20Plan%20Inquiry';
                     return;
                   }
-
                   if (onStartCheckout) {
                     onStartCheckout(plan.id);
                     return;
                   }
-
                   if (onNavigate) {
                     onNavigate('pricing');
                     return;
                   }
-
-                  onRegisterClick();
+                  navigate('/payment', { state: { planId: plan.id } });
                 }}
                 className={`mt-4 w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${
                   plan.popular

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -48,7 +49,8 @@ const getDueDate = (projectTasks) => {
   return new Date(datedTasks[0].dueDate).toLocaleDateString();
 };
 
-export default function Projects({ setActiveView, authUser }) {
+export default function Projects({ authUser }) {
+  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [projects, setProjects] = useState([]);
@@ -331,8 +333,7 @@ export default function Projects({ setActiveView, authUser }) {
             <button
               className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-dusty-blue transition hover:text-primary-soft-sky"
               onClick={() => {
-                localStorage.setItem('selectedProject', project.id);
-                setActiveView('project-details');
+                navigate(`/project/${project.id}`);
               }}
               type="button"
             >

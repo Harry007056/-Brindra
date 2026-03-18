@@ -39,3 +39,20 @@ exports.assignPlan = async (req, res) => {
     return res.status(400).json({ message: err.message || "Failed to assign plan" });
   }
 };
+
+exports.assignEnterprisePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { members, totalPrice } = req.body;
+    if (!members || !totalPrice) {
+      return res.status(400).json({ message: "members and totalPrice required" });
+    }
+    const plan = await userService.createCustomEnterprisePlan(id, members, totalPrice);
+    return res.json({
+      message: "Custom Enterprise plan created and assigned",
+      plan
+    });
+  } catch (err) {
+    return res.status(400).json({ message: err.message || "Failed to create enterprise plan" });
+  }
+};

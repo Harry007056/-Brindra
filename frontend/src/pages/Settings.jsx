@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../hooks/useAuth';
 import {
   User,
   Bell,
@@ -14,6 +16,7 @@ import {
   Smartphone,
   Monitor,
   Save,
+  LogOut,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { toast } from 'react-toastify';
@@ -53,6 +56,15 @@ export default function Settings({
   onAuthUserUpdated,
   onWorkspaceUpdated,
 }) {
+  const { handleLogout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSettingsLogout = () => {
+    if (confirm('Are you sure you want to log out?')) {
+      handleLogout();
+      navigate('/', { replace: true });
+    }
+  };
   const [activeSection, setActiveSection] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -635,6 +647,17 @@ export default function Settings({
               </button>
             </div>
           )}
+
+          <div className="mt-6 pt-6 border-t border-[#D9E1D7]">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-destructive-soft-red/10 p-4 text-destructive-danger hover:bg-destructive-soft-red/20 transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="text-sm font-medium">Log out</span>
+            </button>
+          </div>
         </motion.div>
       </div>
     </div>
