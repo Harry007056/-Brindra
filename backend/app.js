@@ -9,7 +9,14 @@ const app = express();
 
 const isAllowedOrigin = (origin = "") => {
   if (!origin) return true;
-  return /^https?:\/\/localhost(:\d+)?$/i.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/i.test(origin);
+  const allowed = [
+    /^https?:\/\/localhost(:\d+)?$/i,
+    /^https?:\/\/127\.0\.0\.1(:\d+)?$/i,
+    /^https:\/\/.*\.vercel\.app$/i,
+    /^https:\/\/.*\.netlify\.app$/i,
+    /^https:\/\/your-render-domain\.onrender\.com$/i  // Replace with actual Render URL
+  ];
+  return allowed.some(regex => regex.test(origin));
 };
 
 app.use(
