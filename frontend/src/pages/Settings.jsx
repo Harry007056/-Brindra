@@ -21,6 +21,7 @@ import {
 import { clsx } from 'clsx';
 import { toast } from 'react-toastify';
 import api from '../api';
+import { useTheme } from '../contexts/ThemeProvider';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -41,21 +42,17 @@ const timeZoneOptions = [
   'America/New_York',
 ];
 
-const resolveSystemTheme = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-
 export default function Settings({
+
   authUser,
-  theme,
-  setTheme,
-  accentColor,
-  setAccentColor,
   activePlan = 'demo',
   activeRole = null,
   canViewActivePlan = true,
   onAuthUserUpdated,
   onWorkspaceUpdated,
 }) {
+  const { theme, setTheme, accentColor, setAccentColor } = useTheme();
+
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
 
@@ -81,7 +78,7 @@ export default function Settings({
     newPassword: '',
     confirmPassword: '',
   });
-  const [appearance, setAppearance] = useState({ theme: 'system', accentColor: accentColor || '#5E81AC' });
+  const [appearance, setAppearance] = useState({ theme: 'dark', accentColor: accentColor || '#5E81AC' });
   const [language, setLanguage] = useState({
     displayLanguage: 'English (US)',
     timeZone: 'Asia/Kolkata',
@@ -122,14 +119,15 @@ export default function Settings({
               : false,
         }));
         setAppearance({
-          theme: ['light', 'dark', 'system'].includes(nextSettings?.appearance?.theme) ? nextSettings.appearance.theme : 'system',
+          theme: ['light', 'dark', 'system'].includes(nextSettings?.appearance?.theme) ? nextSettings.appearance.theme : 'dark',
           accentColor: nextSettings?.appearance?.accentColor || accentColor || '#5E81AC',
         });
-        if (nextSettings?.appearance?.accentColor) setAccentColor?.(nextSettings.appearance.accentColor);
+        if (nextSettings?.appearance?.accentColor) setAccentColor(nextSettings.appearance.accentColor);
         const preferredTheme = ['light', 'dark', 'system'].includes(nextSettings?.appearance?.theme)
           ? nextSettings.appearance.theme
-          : 'system';
-        setTheme?.(preferredTheme === 'system' ? resolveSystemTheme() : preferredTheme);
+          : 'dark';
+        setTheme(preferredTheme === 'system' ? resolveSystemTheme() : preferredTheme);
+
         setLanguage({
           displayLanguage: nextSettings?.language?.displayLanguage || 'English (US)',
           timeZone: nextSettings?.language?.timeZone || 'Asia/Kolkata',
@@ -145,7 +143,13 @@ export default function Settings({
     return () => {
       isMounted = false;
     };
-  }, [accentColor, setAccentColor, setTheme]);
+  }, []);
+
+  useEffect(() => {
+    setAppearance((prev) => (
+      prev.accentColor === accentColor ? prev : { ...prev, accentColor }
+    ));
+  }, [accentColor]);
 
   const saveSettings = async (payload, successMessage) => {
     try {
@@ -218,10 +222,11 @@ export default function Settings({
 
   const handleAppearanceSave = async () => {
     const selectedTheme = appearance.theme === 'system' ? resolveSystemTheme() : appearance.theme;
-    setTheme?.(selectedTheme);
-    setAccentColor?.(appearance.accentColor);
+    setTheme(selectedTheme);
+    setAccentColor(appearance.accentColor);
     await saveSettings({ settings: { appearance } }, 'Appearance updated');
   };
+
 
   const handleLanguageSave = async () => {
     await saveSettings(
@@ -521,7 +526,8 @@ export default function Settings({
                       type="button"
                       onClick={() => {
                         setAppearance((prev) => ({ ...prev, theme: 'dark' }));
-                        setTheme?.('dark');
+                        setTheme('dark');
+
                       }}
                       className={clsx(
                         'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
@@ -537,7 +543,8 @@ export default function Settings({
                       type="button"
                       onClick={() => {
                         setAppearance((prev) => ({ ...prev, theme: 'light' }));
-                        setTheme?.('light');
+                        setTheme('light');
+
                       }}
                       className={clsx(
                         'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
@@ -553,7 +560,8 @@ export default function Settings({
                       type="button"
                       onClick={() => {
                         setAppearance((prev) => ({ ...prev, theme: 'system' }));
-                        setTheme?.(resolveSystemTheme());
+                        setTheme(resolveSystemTheme());
+
                       }}
                       className={clsx(
                         'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
@@ -578,7 +586,8 @@ export default function Settings({
                         type="button"
                         onClick={() => {
                           setAppearance((prev) => ({ ...prev, accentColor: color }));
-                          setAccentColor?.(color);
+                          setAccentColor(color);
+
                         }}
                         className={clsx(
                           'h-7 w-7 rounded-full border-2 transition',

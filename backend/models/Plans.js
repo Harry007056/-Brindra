@@ -6,46 +6,44 @@ const planSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  maxBranches: {
-    type: Number,
+  id: {
+    type: String,
     required: true,
-    default: 0 // 0 means unlimited
+    unique: true
   },
   price: {
-    type: Number,
-    required: true
-  },
-  customMembers: {
-    type: Number,
-    min: 76,
-    default: null
-  },
-  customPrice: {
-    type: Number,
-    default: null
-  },
-  baseMembers: {
-    type: Number,
-    default: 76
-  },
-  basePricePerMember: {
-    type: Number,
-    default: 13
-  },
-  description: {
     type: String,
     required: true
   },
-  isDemo: {
+  period: {
+    type: String,
+    default: 'per user / month'
+  },
+  desc: {
+    type: String,
+    required: true
+  },
+  detail: String,
+  cta: String,
+  bestFor: String,
+  pricePerMember: {
+    type: Number,
+    default: 0
+  },
+  memberRule: String,
+  features: [String],
+  limitations: [String],
+  popular: {
     type: Boolean,
     default: false
   },
-  durationDays: {
+  maxMembers: {
     type: Number,
-    default: 30 // null or -1 for demo
+    default: 5
   }
 }, {
   timestamps: true
 });
 
 module.exports = mongoose.model('Plan', planSchema);
+

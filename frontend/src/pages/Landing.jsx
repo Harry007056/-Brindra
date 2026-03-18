@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, FolderKanban, MessageSquare, Rocket, Sparkles, Users } from 'lucide-react';
@@ -157,7 +158,7 @@ const pricingPlans = [
     id: 'enterprise',
     name: 'Enterprise',
     price: 'Custom',
-    period: 'annual contract',
+    period: 'monthly billing',
     desc: 'For large orgs with advanced needs.',
     detail: 'Governance, support, and controls for high-scale operations.',
     highlights: ['Advanced admin controls', 'Priority onboarding/support'],
@@ -165,6 +166,8 @@ const pricingPlans = [
     limit: 'Limit: custom scope by agreement',
     cta: 'Contact Sales',
     popular: false,
+    baseTotalPrice: 1000,
+    baseMembers: 76,
   },
 ];
 
@@ -185,8 +188,16 @@ const stagger = {
   show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
 };
 
+const formatInr = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(value);
+
 export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onStartCheckout }) {
   const navigate = useNavigate();
+  const [enterpriseMembers, setEnterpriseMembers] = useState(76);
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -196,6 +207,13 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onS
   const heroY = useTransform(scrollYProgress, [0, 0.35], [0, -45]);
   const orbDriftX = useTransform(scrollYProgress, [0, 0.6], [0, 30]);
   const orbDriftY = useTransform(scrollYProgress, [0, 0.6], [0, -20]);
+  const enterprisePrice = useMemo(() => {
+    const enterprisePlan = pricingPlans.find((plan) => plan.id === 'enterprise');
+    const baseMembers = Number(enterprisePlan?.baseMembers) || 76;
+    const baseTotalPrice = Number(enterprisePlan?.baseTotalPrice) || 1000;
+    const total = Math.round((baseTotalPrice * enterpriseMembers) / baseMembers);
+    return `${formatInr(total)} / month`;
+  }, [enterpriseMembers]);
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <motion.nav
@@ -390,8 +408,34 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onS
                 </motion.span>
               )}
               <h3 className="text-base font-semibold text-accent-warm-grey">{plan.name}</h3>
-              <p className="mt-2 text-3xl font-bold text-primary-dusty-blue">{plan.price}</p>
-              <p className="text-xs font-medium uppercase tracking-wide text-text-default">{plan.period}</p>
+              {plan.id === 'enterprise' ? (
+                <>
+                  <p className="mt-2 text-3xl font-bold text-primary-dusty-blue">{enterprisePrice}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-default">{plan.period}</p>
+                  <div className="mt-3 rounded-lg bg-background-warm-off-white p-2">
+                    <label htmlFor="landing-enterprise-members" className="text-[11px] font-semibold uppercase tracking-wide text-accent-warm-grey">
+                      Team Members
+                    </label>
+                    <input
+                      id="landing-enterprise-members"
+                      type="number"
+                      min={76}
+                      value={enterpriseMembers}
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        setEnterpriseMembers(Number.isFinite(next) ? Math.max(76, next) : 76);
+                      }}
+                      className="mt-2 w-full rounded-lg border border-[#88C0D0]/35 bg-background-light-sand px-3 py-2 text-sm text-accent-warm-grey outline-none"
+                    />
+                    <p className="mt-2 text-[11px] text-text-default">Base price is ₹1,000 at 76 members. Cost increases as members increase.</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-3xl font-bold text-primary-dusty-blue">{plan.price}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-default">{plan.period}</p>
+                </>
+              )}
               <p className="mt-2 text-sm text-text-default">{plan.desc}</p>
               <p className="mt-1 text-xs text-text-default">{plan.detail}</p>
               <div className="mt-2 rounded-lg bg-background-warm-off-white p-2">
@@ -414,19 +458,18 @@ export default function Landing({ onLoginClick, onRegisterClick, onNavigate, onS
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
-                  if (plan.id === 'growth') {
-                    window.location.href = 'mailto:leader@brindra.com?subject=Growth%20Plan%20Inquiry';
-                    return;
-                  }
+                  const customMembers = plan.id === 'enterprise' ? enterpriseMembers : null;
                   if (onStartCheckout) {
-                    onStartCheckout(plan.id);
+                    onStartCheckout(plan.id, customMembers);
                     return;
                   }
                   if (onNavigate) {
                     onNavigate('pricing');
                     return;
                   }
-                  navigate('/payment', { state: { planId: plan.id } });
+                  const params = new URLSearchParams({ plan: plan.id });
+                  if (customMembers) params.set('members', String(customMembers));
+                  navigate(`/payment?${params.toString()}`);
                 }}
                 className={`mt-4 w-full rounded-xl px-4 py-2.5 text-sm font-semibold ${
                   plan.popular

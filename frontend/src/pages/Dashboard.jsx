@@ -52,8 +52,8 @@ const initials = (name) => {
 };
 
 const colorByStatus = {
-  Completed: '#88C0D0',
-  'In Progress': '#5E81AC',
+  Completed: 'var(--brand-soft)',
+  'In Progress': 'var(--brand-primary)',
   Pending: '#A3BE8C',
 };
 
@@ -332,8 +332,8 @@ export default function Dashboard({ userName }) {
               <AreaChart data={activityData}>
                 <defs>
                   <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#88C0D0" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#88C0D0" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--brand-soft)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--brand-soft)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#A3BE8C" stopOpacity={0.3} />
@@ -351,7 +351,7 @@ export default function Dashboard({ userName }) {
                     color: '#4C566A',
                   }}
                 />
-                <Area type="monotone" dataKey="tasks" stroke="#5E81AC" strokeWidth={2} fill="url(#colorTasks)" />
+                <Area type="monotone" dataKey="tasks" stroke="var(--brand-primary)" strokeWidth={2} fill="url(#colorTasks)" />
                 <Area type="monotone" dataKey="messages" stroke="#A3BE8C" strokeWidth={2} fill="url(#colorMessages)" />
               </AreaChart>
             </ResponsiveContainer>

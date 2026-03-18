@@ -1,15 +1,23 @@
 @import "tailwindcss";
 
 :root {
+  --accent-primary: #5e81ac;
+  --accent-primary-rgb: 94 129 172;
+  --accent-soft: #88c0d0;
+  --accent-soft-rgb: 136 192 208;
+  --accent-deep: #486589;
+  --accent-deeper: #38506d;
   --bg-app: #f1f3ee;
   --bg-surface: #f8f9f6;
   --bg-soft: #eef1ea;
   --text-main: #4c566a;
   --text-muted: #5f697c;
   --border-soft: #d9e1d7;
-  --border-accent: rgba(136, 192, 208, 0.35);
-  --brand-primary: #5e81ac;
-  --brand-soft: #88c0d0;
+  --border-accent: rgba(var(--accent-soft-rgb), 0.35);
+  --brand-primary: var(--accent-primary);
+  --brand-soft: var(--accent-soft);
+  --brand-deep: var(--accent-deep);
+  --brand-deeper: var(--accent-deeper);
 }
 
 [data-theme='dark'] {
@@ -19,7 +27,7 @@
   --text-main: #e6edf7;
   --text-muted: #b7c5dd;
   --border-soft: #33465f;
-  --border-accent: rgba(136, 192, 208, 0.4);
+  --border-accent: rgba(var(--accent-soft-rgb), 0.4);
 }
 
 @layer base {
@@ -81,7 +89,15 @@
   color: var(--brand-primary) !important;
 }
 
+[class~='text-[#5E81AC]'] {
+  color: var(--brand-primary) !important;
+}
+
 .bg-primary-dusty-blue {
+  background-color: var(--brand-primary) !important;
+}
+
+[class~='bg-[#5E81AC]'] {
   background-color: var(--brand-primary) !important;
 }
 
@@ -89,7 +105,15 @@
   border-color: var(--brand-primary) !important;
 }
 
+[class~='border-[#5E81AC]'] {
+  border-color: var(--brand-primary) !important;
+}
+
 .text-primary-soft-sky {
+  color: var(--brand-soft) !important;
+}
+
+[class~='text-[#88C0D0]'] {
   color: var(--brand-soft) !important;
 }
 
@@ -97,11 +121,23 @@
   background-color: var(--brand-soft) !important;
 }
 
+[class~='bg-[#88C0D0]'] {
+  background-color: var(--brand-soft) !important;
+}
+
 .hover\:bg-primary-soft-sky:hover {
   background-color: var(--brand-soft) !important;
 }
 
+[class~='hover:bg-[#88C0D0]']:hover {
+  background-color: var(--brand-soft) !important;
+}
+
 .hover\:text-primary-soft-sky:hover {
+  color: var(--brand-soft) !important;
+}
+
+[class~='hover:text-[#88C0D0]']:hover {
   color: var(--brand-soft) !important;
 }
 
@@ -111,6 +147,92 @@
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
+[class~='from-[#5E81AC]'] {
+  --tw-gradient-from: var(--brand-primary) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: transparent var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
 .to-primary-soft-sky {
   --tw-gradient-to: var(--brand-soft) var(--tw-gradient-to-position) !important;
+}
+
+[class~='to-[#88C0D0]'] {
+  --tw-gradient-to: var(--brand-soft) var(--tw-gradient-to-position) !important;
+}
+
+[class~='border-[#88C0D0]/20'] {
+  border-color: rgba(var(--accent-soft-rgb), 0.2) !important;
+}
+
+[class~='border-[#88C0D0]/25'] {
+  border-color: rgba(var(--accent-soft-rgb), 0.25) !important;
+}
+
+[class~='border-[#88C0D0]/30'] {
+  border-color: rgba(var(--accent-soft-rgb), 0.3) !important;
+}
+
+[class~='border-[#88C0D0]/35'] {
+  border-color: rgba(var(--accent-soft-rgb), 0.35) !important;
+}
+
+[class~='border-[#88C0D0]/40'] {
+  border-color: rgba(var(--accent-soft-rgb), 0.4) !important;
+}
+
+[class~='border-primary-soft-sky/50'] {
+  border-color: rgba(var(--accent-soft-rgb), 0.5) !important;
+}
+
+[class~='border-primary-soft-sky/60'] {
+  border-color: rgba(var(--accent-soft-rgb), 0.6) !important;
+}
+
+[class~='bg-primary-soft-sky/5'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.05) !important;
+}
+
+[class~='bg-primary-soft-sky/10'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.1) !important;
+}
+
+[class~='bg-primary-soft-sky/20'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.2) !important;
+}
+
+[class~='bg-primary-soft-sky/25'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.25) !important;
+}
+
+[class~='bg-primary-soft-sky/30'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.3) !important;
+}
+
+[class~='bg-primary-soft-sky/40'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.4) !important;
+}
+
+[class~='bg-[#88C0D0]/20'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.2) !important;
+}
+
+[class~='bg-[#88C0D0]/25'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.25) !important;
+}
+
+[class~='bg-[#88C0D0]/30'] {
+  background-color: rgba(var(--accent-soft-rgb), 0.3) !important;
+}
+
+[class~='ring-primary-soft-sky/20'] {
+  --tw-ring-color: rgba(var(--accent-soft-rgb), 0.2) !important;
+}
+
+[class~='ring-primary-soft-sky/30'] {
+  --tw-ring-color: rgba(var(--accent-soft-rgb), 0.3) !important;
+}
+
+[class~='ring-primary-soft-sky/40'] {
+  --tw-ring-color: rgba(var(--accent-soft-rgb), 0.4) !important;
 }

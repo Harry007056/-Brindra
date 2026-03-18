@@ -33,7 +33,8 @@ export default function Sidebar({ userName, activeRole, workspaceName, allowedVi
 
   return (
     <motion.aside
-      className="fixed inset-y-0 left-0 z-20 w-60 flex-shrink-0 overflow-auto border-r border-[#88C0D0]/25 bg-gradient-to-b from-[#5E81AC] via-[#5A7BA4] to-[#4C6A90] p-6 text-background-warm-off-white shadow-xl"
+      className="fixed inset-y-0 left-0 z-20 w-60 flex-shrink-0 overflow-auto border-r border-[#88C0D0]/25 p-6 text-background-warm-off-white shadow-xl"
+      style={{ background: 'linear-gradient(180deg, var(--brand-primary) 0%, var(--brand-deep) 55%, var(--brand-deeper) 100%)' }}
       initial={{ x: -100, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -61,7 +62,7 @@ export default function Sidebar({ userName, activeRole, workspaceName, allowedVi
               to={item.path}
               className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-[#88C0D0] text-[#4C566A] shadow-md border border-[#D9E1D7]'
+                  ? 'bg-primary-soft-sky text-[#4C566A] shadow-md border border-[#D9E1D7]'
                   : 'text-[#EAF5FA] hover:bg-background-light-sand/50 hover:text-background-warm-off-white hover:border-[#D9E1D7]'
               }`}
             >
@@ -79,7 +80,7 @@ export default function Sidebar({ userName, activeRole, workspaceName, allowedVi
 
       <div className="mt-auto pt-6">
         <div className="flex items-center space-x-3 rounded-xl border border-[#D9E1D7] bg-background-light-sand/45 p-3 backdrop-blur-sm">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#A3BE8C] font-semibold text-[#4C566A]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft-sky font-semibold text-[#4C566A]">
             {initials}
           </div>
           <div className="text-sm">
@@ -91,4 +92,3 @@ export default function Sidebar({ userName, activeRole, workspaceName, allowedVi
     </motion.aside>
   );
 }
-

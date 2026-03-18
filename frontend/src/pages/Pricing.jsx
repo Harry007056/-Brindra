@@ -1,4 +1,10 @@
-const plans = [
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../api';
+import Spinner from '../components/Spinner';
+import { motion } from 'framer-motion';
+
+const fallbackPlans = [
   {
     id: 'demo',
     name: 'Demo',
@@ -24,7 +30,7 @@ const plans = [
   {
     id: 'starter',
     name: 'Starter',
-    price: '\u20B9420',
+    price: '₹420',
     period: 'per user / month',
     desc: 'Small teams testing collaboration in real projects.',
     detail: 'Run live projects with core messaging and ownership while keeping cost predictable for early teams.',
@@ -46,7 +52,7 @@ const plans = [
   {
     id: 'growth',
     name: 'Growth',
-    price: '\u20B91,000',
+    price: '₹1,000',
     period: 'per user / month',
     desc: 'For teams scaling projects, communication, and workflows.',
     detail: 'Unlock faster coordination with richer collaboration modules and better visibility across active work.',
@@ -103,6 +109,13 @@ const addOns = [
   { title: 'Custom Onboarding', desc: 'Role-based onboarding sessions for larger teams.' },
 ];
 
+const formatInr = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(value);
+
 export default function Pricing({
   setActiveView,
   activePlan = 'demo',
@@ -112,20 +125,78 @@ export default function Pricing({
   onPlanSelect,
   onPlanCheckout,
 }) {
+  const navigate = useNavigate();
+  const [dynamicPlans, setDynamicPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [enterpriseMembers, setEnterpriseMembers] = useState(76);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/api/plans');
+        setDynamicPlans(Array.isArray(response.data) ? response.data : fallbackPlans);
+      } catch (err) {
+        console.error('Failed to fetch plans:', err);
+        setError('Using fallback plans (API unavailable)');
+        setDynamicPlans(fallbackPlans);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
+
+  const plans = dynamicPlans.length > 0 ? dynamicPlans : fallbackPlans;
+  const enterprisePrice = useMemo(() => {
+    const enterprisePlan = plans.find((plan) => plan.id === 'enterprise');
+    const baseMembers = Number(enterprisePlan?.baseMembers) || 76;
+    const baseTotalPrice = Number(enterprisePlan?.baseTotalPrice) || 1000;
+    const total = Math.round((baseTotalPrice * enterpriseMembers) / baseMembers);
+    return `${formatInr(total)} / month`;
+  }, [enterpriseMembers, plans]);
+
   const handleSelectPlan = (planId) => {
     if (isAuthenticated && !canPurchasePlan) return;
+    const customMembers = planId === 'enterprise' ? enterpriseMembers : null;
 
     if (onPlanCheckout) {
-      onPlanCheckout(planId);
+      onPlanCheckout(planId, customMembers);
       return;
     }
 
-    onPlanSelect?.(planId);
+    if (!onPlanSelect && !setActiveView) {
+      const params = new URLSearchParams({ plan: planId });
+      if (customMembers) params.set('members', String(customMembers));
+      navigate(`/payment?${params.toString()}`);
+      return;
+    }
+
+    onPlanSelect?.(planId, customMembers);
     setActiveView?.(isAuthenticated ? 'dashboard' : 'register');
   };
 
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-accent-muted-coral/40 bg-accent-muted-coral/10 p-3 text-sm text-accent-warm-grey"
+        >
+          {error}
+        </motion.div>
+      )}
       <section className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-6 shadow-sm">
         <h1 className="text-3xl font-bold text-accent-warm-grey">Pricing</h1>
         <p className="mt-2 text-text-default">
@@ -159,8 +230,34 @@ export default function Pricing({
               </span>
             )}
             <h2 className="text-lg font-semibold text-accent-warm-grey">{plan.name}</h2>
-            <p className="mt-2 text-3xl font-bold text-primary-dusty-blue">{plan.price}</p>
-            <p className="text-xs font-medium uppercase tracking-wide text-text-default">{plan.period}</p>
+            {plan.id === 'enterprise' ? (
+              <>
+                <p className="mt-2 text-3xl font-bold text-primary-dusty-blue">{enterprisePrice}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-text-default">monthly billing</p>
+                <div className="mt-3 rounded-lg bg-background-light-sand p-3">
+                  <label htmlFor="enterprise-members" className="text-xs font-semibold uppercase tracking-wide text-accent-warm-grey">
+                    Team Members
+                  </label>
+                  <input
+                    id="enterprise-members"
+                    type="number"
+                    min={76}
+                    value={enterpriseMembers}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      setEnterpriseMembers(Number.isFinite(next) ? Math.max(76, next) : 76);
+                    }}
+                    className="mt-2 w-full rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-accent-warm-grey outline-none"
+                  />
+                  <p className="mt-2 text-xs text-text-default">Base price is ₹1,000 at 76 members. Cost increases as members increase.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-3xl font-bold text-primary-dusty-blue">{plan.price}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-text-default">{plan.period}</p>
+              </>
+            )}
             <p className="mt-2 text-sm text-text-default">{plan.desc}</p>
             <p className="mt-2 text-xs text-text-default">{plan.detail}</p>
             <p className="mt-2 text-xs font-medium text-primary-dusty-blue">Best for: {plan.bestFor}</p>
@@ -193,7 +290,7 @@ export default function Pricing({
                   : 'border border-[#88C0D0]/40 bg-background-light-sand text-primary-dusty-blue hover:bg-background-warm-off-white'
               } disabled:cursor-not-allowed disabled:opacity-60`}
             >
-              {isAuthenticated && !canPurchasePlan ? 'Purchase Restricted' : 'Proceed to Payment'}
+              {isAuthenticated && !canPurchasePlan ? 'Purchase Restricted' : plan.cta || 'Proceed to Payment'}
             </button>
           </article>
         ))}

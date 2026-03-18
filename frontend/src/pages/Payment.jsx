@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 const plans = {
   demo: {
@@ -78,9 +79,20 @@ export default function Payment({
   canPurchasePlan = true,
   onConfirmPlan,
 }) {
-  const plan = plans[selectedPlanId] || plans.starter;
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const selectedPlanFromUrl = searchParams.get('plan');
+  const selectedPlanFromState = location.state?.planId;
+  const effectivePlanId = selectedPlanFromUrl || selectedPlanFromState || selectedPlanId;
+  const plan = plans[effectivePlanId] || plans.starter;
   const isEnterprise = plan.id === 'enterprise';
-  const [memberCount, setMemberCount] = useState(76);
+  const membersFromUrl = searchParams.get('members');
+  const membersFromState = location.state?.members;
+  const [memberCount, setMemberCount] = useState(() => {
+    const source = Number(membersFromUrl ?? membersFromState ?? 76);
+    return Number.isFinite(source) ? Math.max(76, source) : 76;
+  });
 
   const payable = useMemo(() => {
     if (plan.pricePerMember <= 0) return 0;
@@ -182,7 +194,13 @@ export default function Payment({
           </button>
           <button
             type="button"
-            onClick={() => setActiveView?.('pricing')}
+            onClick={() => {
+              if (setActiveView) {
+                setActiveView('pricing');
+                return;
+              }
+              navigate('/pricing');
+            }}
             className="mt-2 w-full rounded-xl border border-[#88C0D0]/40 bg-background-warm-off-white px-4 py-2.5 text-sm font-semibold text-primary-dusty-blue hover:bg-background-light-sand"
           >
             Back to Pricing
