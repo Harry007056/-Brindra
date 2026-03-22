@@ -1,11 +1,10 @@
-# Fix ThemeProvider Import Error
+# Brindra Render Deployment Fix - TODO
 
-## Steps
-- [x] 1. Update import path in frontend/src/pages/Settings.jsx from '../../contexts/ThemeProvider' to '../../../contexts/ThemeProvider'
-- [ ] 2. Restart Vite dev server (cd frontend && npm run dev)
-- [ ] 3. Verify import resolves and no other errors
-- [ ] 4. Test Settings page theme functionality
+## Plan Steps:
+- [x] User approved edit plan for Backend/render.yaml (rootDir: Backend, buildCommand blank)
+- [x] Edit Backend/render.yaml with fixes
+- [x] Update TODO.md with completion status  
+- [ ] Provide deploy instructions and attempt_completion
 
-**Current status: Import fixed successfully. Restart dev server to test.**
-
+**Progress:** Ready to implement edits.
 
