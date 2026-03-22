@@ -7,14 +7,23 @@ const healthRoutes = require("./routes/healthRoutes");
 
 const app = express();
 
+const configuredFrontendUrl = String(process.env.FRONTEND_URL || "").trim();
+const configuredFrontendOrigin = configuredFrontendUrl
+  ? configuredFrontendUrl.replace(/\/+$/, "")
+  : "";
+
 const isAllowedOrigin = (origin = "") => {
   if (!origin) return true;
+  if (configuredFrontendOrigin && origin.toLowerCase() === configuredFrontendOrigin.toLowerCase()) {
+    return true;
+  }
+
   const allowed = [
     /^https?:\/\/localhost(:\d+)?$/i,
     /^https?:\/\/127\.0\.0\.1(:\d+)?$/i,
     /^https:\/\/.*\.vercel\.app$/i,
     /^https:\/\/.*\.netlify\.app$/i,
-    /^https:\/\/your-render-domain\.onrender\.com$/i  // Replace with actual Render URL
+    /^https:\/\/brindra\.onrender\.com$/i
   ];
   return allowed.some(regex => regex.test(origin));
 };

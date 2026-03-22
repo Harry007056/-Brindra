@@ -4,9 +4,7 @@ import { Hash, Send, Users, Loader2, MessageCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { io } from 'socket.io-client';
 import api from '../api';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const SOCKET_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+import { SOCKET_URL } from '../config';
 
 const isMongoObjectId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || ''));
 const SYNC_INTERVAL_MS = 5000;

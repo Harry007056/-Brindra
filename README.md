@@ -52,7 +52,15 @@ JWT_REFRESH_EXPIRES_IN=7d
 VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
-If `VITE_API_BASE_URL` is not set, frontend defaults to `http://localhost:5000/api`.
+If `VITE_API_BASE_URL` is not set:
+- local development defaults to `http://localhost:5000/api`
+- production builds default to `/api`
+
+For Netlify, set `VITE_API_BASE_URL` to your deployed backend URL, for example:
+
+```env
+VITE_API_BASE_URL=https://brindra.onrender.com/api
+```
 
 ## Local Setup
 
@@ -162,6 +170,11 @@ Backend currently allows origins matching:
 
 - `http://localhost:<port>`
 - `http://127.0.0.1:<port>`
+- `https://*.netlify.app`
+- `https://*.vercel.app`
+- `https://brindra.onrender.com`
+
+You can also set `FRONTEND_URL` in `Backend/.env` or Render environment variables to allow a specific frontend origin explicitly.
 
 ## Seed Data
 

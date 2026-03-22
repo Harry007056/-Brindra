@@ -1,6 +1,6 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const AUTH_SESSIONS_KEY = 'brindra-auth-sessions';
 const ACTIVE_SESSION_ID_KEY = 'brindra-active-session-id';
 const LAST_SESSION_ID_KEY = 'brindra-last-session-id';
