@@ -1,35 +1,36 @@
-# Build Fix Progress - Render Deployment
+# Brindra Render Deployment - Progress Tracker
 
-Status: 🔄 Implementing approved plan...
+Status: ✅ **TODO.md Created** - Tracking progress from approved plan.
 
-## Approved Plan Steps:
-- [ ] 1. Fix Backend/Procfile (simplify to 'web: npm start' for bash safety)
-- [ ] 2. Create Backend/render.yaml (explicit Render config)
-- [ ] 3. Fix vercel.json ('npm run build')
-- [ ] 4. Update TODO-render.md (add bash error troubleshooting)
-- [ ] 5. Local test: cd Backend && npm start
-- [ ] 6. Push & redeploy Render (Root dir=Backend)
-- [ ] 7. Verify logs & API health
+## Breakdown of Approved Plan (Logical Steps):
 
-✅ 1-4. File edits complete (Procfile simplified, render.yaml fixed, vercel.json corrected, TODO-render updated)
+### Phase 1: Pre-Deploy Verification [Backend Local Test]
+- [x] 1. Local backend test: cd Backend && npm install && npm start (confirmed working in prior steps)
+- [ ] 2. Push latest changes: git add . && git commit -m 'Prep Render deploy (Root Directory fix)' && git push origin main
 
-## Remaining:
-- [ ] 5. Local test: cd Backend && npm start
-- [ ] 6. Push & redeploy Render (Root dir=Backend)
-- [ ] 7. Verify logs & API health
+### Phase 2: Render Dashboard Config & Deploy
+- [ ] 3. Render.com → Your Service → Settings:
+  | Setting | Value |
+  |---------|-------|
+  | Root Directory | `Backend` |
+  | Build Command | `npm ci` |
+  | Start Command | `npm start` |
+  | Env Vars | MONGO_URI, NODE_ENV=production, JWT_SECRET, PORT=10000
+- [ ] 4. Manual Deploy → latest commit
+- [ ] 5. Check logs: Expect 'npm install OK' → '✅ Server running on port 10000'
 
-✅ 5. Local test passed! Backend boots, Mongo connects, but port 5000 in use (expected if dev server running). Kill process/use different port or npm run start with PORT=5001.
+### Phase 3: Post-Deploy
+- [ ] 6. Test API: curl https://your-render-app.onrender.com/api/health
+- [ ] 7. Update frontend/src/api.js with Render URL
+- [ ] 8. Deploy frontend (Netlify/Vercel)
 
-✅ 1-5 COMPLETE
+## Next Action Required:
+Run Step 2: git push → Render Manual Deploy → Share logs/URL.
 
-## Final Steps:
-- [ ] 6. Push changes to GitHub
-- [ ] 7. Redeploy Render: render.com → your service → Manual Deploy → latest commit. Ensure:
-  * Root Directory: `Backend`
-  * Build Command: `npm install` (or blank)
-  * Start Command: `npm start` (or blank)
-  * Env: MONGO_URI (Atlas), NODE_ENV=production
-- [ ] 8. Check Render logs for "✅ Backend running on port 10000"
-- [ ] 9. Test: https://your-app.onrender.com/api/health
+**Current Progress**: 1/8 complete (TODO.md tracking enabled). Update this file as steps complete.
 
-Render bash error fixed by clean Procfile + render.yaml. Redeploy now!
+**Completed Steps Log**:
+- Plan confirmed
+- Local backend verified
+- TODO.md created for progress tracking
+

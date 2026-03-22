@@ -50,7 +50,9 @@ NODE_ENV=production
 ## Troubleshooting
 - **bash: line 1: : command not found**: Check empty lines in Procfile/Start Command. Fixed: Procfile now `web: npm start`, no cd.
 - **Exit 1**: Verify MONGO_URI env var.
-- Render Dashboard → Settings → Root Directory MUST be `Backend`
+- **CRITICAL**: Render Dashboard → Settings → Root Directory = `Backend` (fixes /opt/render/project/src/Backend/package.json ENOENT)
+  - Build Command: `npm ci` (required, installs Backend deps)
+  - Start Command: blank or `npm start`
 - Use new Backend/render.yaml for explicit config if auto fails.
 
 - Logs: Render dashboard
