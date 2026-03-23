@@ -5,6 +5,8 @@ import { clsx } from 'clsx';
 import { io } from 'socket.io-client';
 import api from '../api';
 import { SOCKET_URL } from '../config';
+import { usePlan } from '../contexts/PlanProvider';
+import UpgradeModal from '../components/UpgradeModal';
 
 const isMongoObjectId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || ''));
 const SYNC_INTERVAL_MS = 5000;
@@ -66,14 +68,27 @@ const directPeerId = (message, meId) => {
   return '';
 };
 
+const roleDisplayName = (role) => {
+  const roleMap = {
+    'team_leader': 'Team Leader',
+    'manager': 'Manager',
+    'member': 'Member',
+    'admin': 'Admin',
+  };
+  return roleMap[String(role)] || String(role).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
 const roleBubbleClass = (role, isMe) => {
+  const normalizedRole = String(role);
   if (isMe) return 'bg-primary-dusty-blue text-background-warm-off-white';
-  if (role === 'team_leader') return 'bg-[#E07A5F]/20 text-accent-warm-grey';
-  if (role === 'manager') return 'bg-secondary-sage-green/25 text-accent-warm-grey';
+  if (normalizedRole === 'team_leader') return 'bg-[#E07A5F]/20 text-accent-warm-grey';
+  if (normalizedRole === 'manager') return 'bg-secondary-sage-green/25 text-accent-warm-grey';
   return 'bg-primary-soft-sky/25 text-accent-warm-grey';
 };
 
 export default function Chat() {
+  const { hasFeature } = usePlan();
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -595,16 +610,30 @@ export default function Chat() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <motion.div initial={{ y: -12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-1">
-        <h1 className="text-3xl font-bold text-accent-warm-grey">Project Chat</h1>
-        <p className="text-text-default">Team members and team leads can chat in real time by project or privately with a teammate.</p>
-        {mode === 'direct' && activeDirectUser && (
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#88C0D0]/35 bg-primary-soft-sky/20 px-3 py-1 text-xs font-semibold text-primary-dusty-blue">
-            <MessageCircle className="h-3.5 w-3.5" />
-            Private Chat with {activeDirectUser.name}
-          </div>
-        )}
-      </motion.div>
+      {hasFeature('privateChat') ? (
+        <motion.div initial={{ y: -12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-1 mb-6">
+          <h1 className="text-3xl font-bold text-accent-warm-grey">Project Chat</h1>
+          <p className="text-text-default">Team members and team leads can chat in real time by project or privately with a teammate.</p>
+          {mode === 'direct' && activeDirectUser && (
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#88C0D0]/35 bg-primary-soft-sky/20 px-3 py-1 text-xs font-semibold text-primary-dusty-blue">
+              <MessageCircle className="h-3.5 w-3.5" />
+              Private Chat with {activeDirectUser.name}
+            </div>
+          )}
+        </motion.div>
+      ) : (
+        <motion.div 
+          initial={{ y: -12, opacity: 0 }} 
+          animate={{ y: 0, opacity: 1 }} 
+          transition={{ duration: 0.4 }}
+          className="relative flex cursor-pointer flex-col items-center gap-6 p-12 text-center backdrop-blur-sm before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-br before:from-accent-muted-coral/70 before:to-accent-muted-coral/20 before:blur-xl hover:before:from-accent-muted-coral/80 mb-6"
+          onClick={() => setShowUpgrade(true)}
+        >
+          <h1 className="text-3xl font-bold text-accent-warm-grey drop-shadow-lg">Chat</h1>
+          <p className="text-lg font-semibold text-accent-warm-grey drop-shadow-lg">Upgrade to Starter plan</p>
+          <p className="text-sm text-white/90">Private 1-on-1 chat + group messaging</p>
+        </motion.div>
+      )}
 
       {error && <p className="rounded-xl border border-[#E07A5F]/40 bg-[#E07A5F]/10 px-3 py-2 text-sm text-[#4C566A]">{error}</p>}
 
@@ -720,9 +749,14 @@ export default function Chat() {
                       roleBubbleClass(senderRole, isMe)
                     )}
                   >
-                    <p className={clsx('mb-0.5 text-xs font-semibold', isMe ? 'text-background-warm-off-white/90' : 'text-primary-dusty-blue')}>
-                      {isMe ? `${sender} (You)` : sender}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className={clsx('text-xs font-semibold', isMe ? 'text-background-warm-off-white/90' : 'text-primary-dusty-blue')}>
+                        {isMe ? `${sender} (You)` : sender}
+                      </p>
+                      <span className={clsx('text-xs', isMe ? 'text-background-warm-off-white/70' : 'text-text-default')}>
+                        ({roleDisplayName(senderRole)})
+                      </span>
+                    </div>
                     <p className="text-sm leading-relaxed">{msg.body}</p>
                     <p className={clsx('mt-1 text-[11px]', isMe ? 'text-background-warm-off-white/80' : 'text-text-default')}>{timeLabel(msg.createdAt)}</p>
                   </div>
@@ -763,8 +797,13 @@ export default function Chat() {
               />
               <button
                 onClick={handleSend}
-                disabled={(mode === 'project' && !activeProject) || (mode === 'direct' && !activeDirectUser) || !input.trim() || sending}
-                className="inline-flex items-center gap-1 rounded-lg bg-primary-dusty-blue px-3 py-2 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!hasFeature('privateChat') || (mode === 'project' && !activeProject) || (mode === 'direct' && !activeDirectUser) || !input.trim() || sending}
+                className={clsx(
+                  'inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed',
+                  hasFeature('privateChat')
+                    ? 'bg-primary-dusty-blue text-background-warm-off-white hover:bg-primary-soft-sky'
+                    : 'border border-[#88C0D0]/35 bg-background-warm-off-white text-text-default hover:bg-background-light-sand'
+                )}
                 type="button"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -791,7 +830,7 @@ export default function Chat() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-accent-warm-grey">{member.name}</p>
-                      <p className="text-xs text-text-default">{String(member.role || '').replace('_', ' ')}</p>
+<p className="text-xs text-text-default">{roleDisplayName(member.role)}</p>
                     </div>
                     {memberId !== meId && (
                       <button
@@ -816,7 +855,13 @@ export default function Chat() {
         </aside>
       </motion.div>
 
+      <UpgradeModal 
+        isOpen={showUpgrade} 
+        onClose={() => setShowUpgrade(false)}
+        requiredPlan="starter" 
+      />
       {loading && <p className="text-sm text-text-default">Loading chat...</p>}
     </div>
   );
 }
+

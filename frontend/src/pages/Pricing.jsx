@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePlan } from '../contexts/PlanProvider';
 import api from '../api';
 import Spinner from '../components/Spinner';
 import { motion } from 'framer-motion';
@@ -118,7 +119,6 @@ const formatInr = (value) =>
 
 export default function Pricing({
   setActiveView,
-  activePlan = 'demo',
   canViewActivePlan = true,
   canPurchasePlan = true,
   isAuthenticated = false,
@@ -126,6 +126,7 @@ export default function Pricing({
   onPlanCheckout,
 }) {
   const navigate = useNavigate();
+  const { activePlan, setActivePlan } = usePlan();
   const [dynamicPlans, setDynamicPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -160,6 +161,10 @@ export default function Pricing({
 
   const handleSelectPlan = (planId) => {
     if (isAuthenticated && !canPurchasePlan) return;
+
+    // Activate plan locally first
+    setActivePlan(planId);
+
     const customMembers = planId === 'enterprise' ? enterpriseMembers : null;
 
     if (onPlanCheckout) {

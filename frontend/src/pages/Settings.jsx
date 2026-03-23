@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
+import { usePlan } from '../contexts/PlanProvider';
 import {
   User,
   Bell,
@@ -17,16 +18,20 @@ import {
   Monitor,
   Save,
   LogOut,
+
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { toast } from 'react-toastify';
 import api from '../api';
 import { useTheme } from '../contexts/ThemeProvider';
 
+import { CreditCard } from 'lucide-react';
+
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Shield },
+  { id: 'plans', label: 'Plans', icon: CreditCard },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'language', label: 'Language', icon: Globe },
 ];
@@ -43,14 +48,13 @@ const timeZoneOptions = [
 ];
 
 export default function Settings({
-
   authUser,
-  activePlan = 'demo',
   activeRole = null,
   canViewActivePlan = true,
   onAuthUserUpdated,
   onWorkspaceUpdated,
 }) {
+  const { activePlan } = usePlan();
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
 
   const { handleLogout } = useAuth();
@@ -84,8 +88,18 @@ export default function Settings({
     timeZone: 'Asia/Kolkata',
   });
 
+const roleDisplayName = (role) => {
+  const roleMap = {
+    'team_leader': 'Team Leader',
+    'manager': 'Manager',
+    'member': 'Member',
+    'admin': 'Admin',
+  };
+  return roleMap[String(role)] || String(role).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
   const effectiveRole = activeRole || authUser?.role || 'member';
-  const role = effectiveRole ? effectiveRole.replace('_', ' ') : 'member';
+  const roleDisplay = roleDisplayName(effectiveRole);
   const initials = (profile.name || 'User')
     .split(/\s+/)
     .slice(0, 2)
@@ -312,7 +326,7 @@ export default function Settings({
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-accent-warm-grey">{profile.name || 'User'}</h3>
-                  <p className="text-sm text-text-default">{role}</p>
+<p className="text-sm text-text-default">{roleDisplay}</p>
                   <p className="mt-1 text-xs text-text-default">This will be displayed on your profile and in team communications.</p>
                 </div>
               </div>
@@ -340,7 +354,7 @@ export default function Settings({
                   <span className="text-xs font-medium text-text-default">Role</span>
                   <input
                     type="text"
-                    value={role}
+                    value={roleDisplay}
                     disabled
                     className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-light-sand px-3 py-2.5 text-sm text-accent-warm-grey outline-none"
                   />
@@ -612,7 +626,7 @@ export default function Settings({
             </div>
           )}
 
-          {!loading && activeSection === 'language' && (
+{!loading && activeSection === 'language' && (
             <div className="space-y-5">
               <h2 className="text-xl font-semibold text-accent-warm-grey">Language & Region</h2>
 
@@ -654,6 +668,42 @@ export default function Settings({
                 <Save className="h-4 w-4" />
                 Save Changes
               </button>
+            </div>
+          )}
+
+          {!loading && activeSection === 'plans' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-accent-warm-grey">Subscription & Plans</h2>
+              <div className="rounded-2xl border border-[#D9E1D7] bg-background-light-sand p-6">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-16 w-16 place-items-center rounded-full bg-primary-dusty-blue text-lg font-semibold text-background-warm-off-white">
+                    {String(activePlan)[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-accent-warm-grey">{String(activePlan).toUpperCase()}</h3>
+                    <p className="text-sm text-text-default">Current active plan</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-text-default">Team Members</p>
+                    <p className="text-sm font-medium text-primary-dusty-blue">Unlimited</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-text-default">Next Billing</p>
+                    <p className="text-sm font-medium text-primary-dusty-blue">End of month</p>
+                  </div>
+                </div>
+                <div className="mt-6">
+                  <a
+                    href="/pricing"
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-6 py-3 text-sm font-semibold text-background-warm-off-white transition hover:bg-primary-soft-sky"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Manage Plan & Upgrade
+                  </a>
+                </div>
+              </div>
             </div>
           )}
 

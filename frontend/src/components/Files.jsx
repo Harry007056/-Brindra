@@ -90,7 +90,12 @@ const folderColors = [
   'from-[#88C0D0] to-[#5E81AC]',
 ];
 
+import { usePlan } from '../contexts/PlanProvider';
+import UpgradeModal from './UpgradeModal';
+
 export default function Files({ authUser }) {
+  const { hasFeature } = usePlan();
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [search, setSearch] = useState('');
   const [files, setFiles] = useState([]);
@@ -253,56 +258,34 @@ export default function Files({ authUser }) {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-      >
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-accent-warm-grey">Files</h1>
-          <p className="text-text-default">Manage and share your team&apos;s files.</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={selectedProjectId}
-            onChange={(event) => setSelectedProjectId(event.target.value)}
-            className="rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-primary-dusty-blue outline-none"
-          >
-            {projects.map((project) => (
-              <option key={String(project._id)} value={String(project._id)}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-          <button
-            className="inline-flex items-center gap-2 rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-4 py-2.5 text-sm font-medium text-primary-dusty-blue transition hover:bg-background-light-sand"
-            type="button"
-            onClick={handleNewFolder}
-          >
-            <FolderPlus className="h-4 w-4" />
-            New Folder
-          </button>
-          <button
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
-            type="button"
-            onClick={() => folderInputRef.current?.click()}
-          >
-            <Upload className="h-4 w-4" />
-            Upload Folder
-          </button>
-          <input
-            ref={folderInputRef}
-            type="file"
-            multiple
-            webkitdirectory="true"
-            directory="true"
-            className="hidden"
-            onChange={handleUploadFolder}
-          />
-        </div>
-      </motion.div>
+      {hasFeature('files') ? (
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl bg-gradient-to-br from-[#D8DEE9]/20 to-background-warm-off-white p-8 text-center shadow-xl backdrop-blur-sm">
+            <FolderPlus className="h-12 w-12 text-primary-dusty-blue opacity-50" />
+            <h3 className="text-lg font-semibold text-accent-warm-grey">No files yet</h3>
+            <p className="text-sm text-text-default">Upload your first file or create a folder.</p>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="relative flex cursor-pointer flex-col items-center gap-6 p-12 text-center backdrop-blur-sm before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-br before:from-accent-muted-coral/70 before:to-accent-muted-coral/20 before:blur-xl hover:before:from-accent-muted-coral/80"
+          onClick={() => setShowUpgrade(true)}
+        >
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold text-accent-warm-grey drop-shadow-lg">Files</h1>
+            <p className="text-lg font-semibold text-accent-warm-grey drop-shadow-lg">Upgrade to Growth plan</p>
+            <p className="text-sm text-white/90">Upload, share, and manage files for your team</p>
+          </div>
+        </motion.div>
+      )}
 
       {error && <p className="rounded-xl border border-[#E07A5F]/40 bg-[#E07A5F]/10 px-3 py-2 text-sm text-[#4C566A]">{error}</p>}
 
@@ -456,6 +439,12 @@ export default function Files({ authUser }) {
 
       {!loading && visibleFiles.length === 0 && <p className="text-sm text-text-default">No files available.</p>}
       {loading && <p className="text-sm text-text-default">Loading files...</p>}
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)}
+          requiredPlan="growth" 
+        />
     </div>
   );
 }
+

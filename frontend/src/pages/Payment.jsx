@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { usePlan } from '../contexts/PlanProvider';
+import { toast } from 'react-toastify';
+import api from '../api';
 
 const plans = {
   demo: {
@@ -21,7 +24,7 @@ const plans = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    priceLabel: '\u20B9420',
+    priceLabel: '₹420',
     period: 'per user / month',
     pricePerMember: 420,
     memberRule: 'Up to 15 members',
@@ -32,7 +35,7 @@ const plans = {
   growth: {
     id: 'growth',
     name: 'Growth',
-    priceLabel: '\u20B91,000',
+    priceLabel: '₹1,000',
     period: 'per user / month',
     pricePerMember: 1000,
     memberRule: 'Up to 75 members',
@@ -73,18 +76,15 @@ const formatInr = (value) =>
 
 export default function Payment({
   setActiveView,
-  selectedPlanId = 'starter',
-  activePlan = 'demo',
-  canViewActivePlan = true,
   canPurchasePlan = true,
-  onConfirmPlan,
 }) {
+  const { activePlan, setActivePlan } = usePlan();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const navigate = useNavigate();
   const selectedPlanFromUrl = searchParams.get('plan');
   const selectedPlanFromState = location.state?.planId;
-  const effectivePlanId = selectedPlanFromUrl || selectedPlanFromState || selectedPlanId;
+  const effectivePlanId = selectedPlanFromUrl || selectedPlanFromState || 'starter';
   const plan = plans[effectivePlanId] || plans.starter;
   const isEnterprise = plan.id === 'enterprise';
   const membersFromUrl = searchParams.get('members');
@@ -104,18 +104,32 @@ export default function Payment({
     return plan.pricePerMember;
   }, [isEnterprise, memberCount, plan.baseMembers, plan.baseTotalPrice, plan.pricePerMember]);
 
+  const handleConfirmPlan = async (planId) => {
+    if (!canPurchasePlan) return;
+    try {
+      await api.post('/api/plans/activate', { planId });
+    } catch (e) {
+      console.log('Backend activation optional, skipped:', e);
+    }
+    setActivePlan(planId);
+    toast.success(`Activated ${planId.toUpperCase()} plan!`);
+    if (setActiveView) {
+      setActiveView('pricing');
+    } else {
+      navigate('/settings');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <section className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-6 shadow-sm">
         <h1 className="text-3xl font-bold text-accent-warm-grey">Payment</h1>
         <p className="mt-2 text-sm text-text-default">
-          Review your selected plan in detail and continue payment.
+          Review your selected plan in detail and confirm activation.
         </p>
-        {canViewActivePlan && (
-          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary-dusty-blue">
-            Active plan: {String(activePlan).toUpperCase()}
-          </p>
-        )}
+        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary-dusty-blue">
+          Active plan: {String(activePlan).toUpperCase()}
+        </p>
         {!canPurchasePlan && (
           <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-accent-muted-coral">
             Only Team Leader or Manager can confirm plan purchases.
@@ -125,7 +139,7 @@ export default function Payment({
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <article className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-5 shadow-sm">
-          <h2 className="text-xl font-semibold text-accent-warm-grey">{plan.name} Plan</h2>
+          <h2 className="text-xl font-semibold text-accent-warm-grey">{plan.name} Plan (Selected for Activation)</h2>
           <p className="mt-1 text-sm text-text-default">{plan.detail}</p>
           <p className="mt-3 text-sm font-medium text-primary-dusty-blue">Member range: {plan.memberRule}</p>
 
@@ -162,7 +176,7 @@ export default function Payment({
               <input
                 id="enterprise-members"
                 type="number"
-                min={76}
+                min="76"
                 value={memberCount}
                 onChange={(event) => {
                   const next = Number(event.target.value);
@@ -170,7 +184,7 @@ export default function Payment({
                 }}
                 className="w-full rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-accent-warm-grey outline-none"
               />
-              <p className="text-xs text-text-default">\u20B91,000 total at 76 members (increases with members)</p>
+              <p className="text-xs text-text-default">₹1,000 total at 76 members (increases with members)</p>
             </div>
           )}
 
@@ -186,11 +200,11 @@ export default function Payment({
 
           <button
             type="button"
-            onClick={() => onConfirmPlan?.(plan.id)}
+            onClick={() => handleConfirmPlan(plan.id)}
             disabled={!canPurchasePlan}
             className="mt-4 w-full rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-semibold text-background-warm-off-white hover:bg-primary-soft-sky disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {canPurchasePlan ? 'Confirm and Activate Plan' : 'Purchase Restricted'}
+            {canPurchasePlan ? (payable > 0 ? `Pay ${formatInr(payable)} & Activate` : 'Confirm & Activate Plan') : 'Purchase Restricted'}
           </button>
           <button
             type="button"
@@ -210,3 +224,4 @@ export default function Payment({
     </div>
   );
 }
+

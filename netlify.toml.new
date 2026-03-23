@@ -1,8 +1,0 @@
-[build]
-publish = "dist"
-functions = "netlify/functions"
-
-[[redirects]]
-from = "/*"
-to = "/.netlify/functions/index"
-status = 200
