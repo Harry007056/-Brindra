@@ -46,12 +46,13 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
 
       sessionStorage.setItem('demoUserEmail', userEmail);
 
-      toast.success('Logged in successfully');
+      toast.success('Login successful');
       navigate('/dashboard');
     } catch (error) {
       const message = error?.response?.data?.message || 'Login failed';
-      if (error?.response?.status === 401 && message.toLowerCase().includes('invalid credentials')) {
-        window.alert('Wrong password or email. Please try again.');
+      if (error?.response?.status === 401) {
+        toast.error('Wrong password or email');
+        return;
       }
       toast.error(message);
     } finally {
