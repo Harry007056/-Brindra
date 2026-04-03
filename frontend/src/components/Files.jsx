@@ -103,6 +103,7 @@ export default function Files({ authUser }) {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
 
   const reloadData = useCallback(async () => {
@@ -223,6 +224,36 @@ export default function Files({ authUser }) {
     }
   };
 
+  const handleUploadFiles = async (event) => {
+    const fileList = Array.from(event.target?.files || []);
+    if (!fileList.length) return;
+
+    if (!selectedProjectId) {
+      toast.error('Select a folder/project first');
+      return;
+    }
+
+    try {
+      for (const file of fileList) {
+        await api.post('/collab/files', {
+          projectId: selectedProjectId,
+          uploaderId: authUser?.id || null,
+          fileName: file.name,
+          path: file.name,
+          mimeType: file.type || '',
+          sizeBytes: file.size || 0,
+        });
+      }
+
+      await reloadData();
+      toast.success(fileList.length === 1 ? 'File uploaded' : `${fileList.length} files uploaded`);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to upload files');
+    } finally {
+      if (event.target) event.target.value = '';
+    }
+  };
+
   const handleDownload = (file) => {
     const path = String(file.path || '');
     const link = document.createElement('a');
@@ -268,7 +299,33 @@ export default function Files({ authUser }) {
           <div className="flex flex-col items-center justify-center gap-4 rounded-2xl bg-gradient-to-br from-[#D8DEE9]/20 to-background-warm-off-white p-8 text-center shadow-xl backdrop-blur-sm">
             <FolderPlus className="h-12 w-12 text-primary-dusty-blue opacity-50" />
             <h3 className="text-lg font-semibold text-accent-warm-grey">No files yet</h3>
-            <p className="text-sm text-text-default">Upload your first file or create a folder.</p>
+            <p className="text-sm text-text-default">Upload your first file, upload a folder, or create a folder.</p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
+                type="button"
+              >
+                <Upload className="h-4 w-4" />
+                Upload Files
+              </button>
+              <button
+                onClick={() => folderInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-4 py-2.5 text-sm font-medium text-primary-dusty-blue transition hover:bg-background-light-sand"
+                type="button"
+              >
+                <FolderPlus className="h-4 w-4" />
+                Upload Folder
+              </button>
+              <button
+                onClick={handleNewFolder}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-4 py-2.5 text-sm font-medium text-primary-dusty-blue transition hover:bg-background-light-sand"
+                type="button"
+              >
+                <FolderPlus className="h-4 w-4" />
+                New Folder
+              </button>
+            </div>
           </div>
         </motion.div>
       ) : (
@@ -288,7 +345,6 @@ export default function Files({ authUser }) {
       )}
 
       {error && <p className="rounded-xl border border-[#E07A5F]/40 bg-[#E07A5F]/10 px-3 py-2 text-sm text-[#4C566A]">{error}</p>}
-
       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="space-y-3">
         <h2 className="text-lg font-semibold text-accent-warm-grey">Folders</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -321,6 +377,26 @@ export default function Files({ authUser }) {
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="text-lg font-semibold text-accent-warm-grey">Recent Files</h2>
           <div className="flex w-full gap-2 lg:w-auto">
+            <select
+              value={selectedProjectId}
+              onChange={(event) => setSelectedProjectId(event.target.value)}
+              className="rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
+            >
+              <option value="">Select folder</option>
+              {projects.map((project) => (
+                <option key={String(project._id)} value={String(project._id)}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary-dusty-blue px-4 py-2.5 text-sm font-medium text-background-warm-off-white transition hover:bg-primary-soft-sky"
+              type="button"
+            >
+              <Upload className="h-4 w-4" />
+              Upload
+            </button>
             <div className="relative flex-1 lg:min-w-80">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-dusty-blue" />
               <input
@@ -439,6 +515,8 @@ export default function Files({ authUser }) {
 
       {!loading && visibleFiles.length === 0 && <p className="text-sm text-text-default">No files available.</p>}
       {loading && <p className="text-sm text-text-default">Loading files...</p>}
+      <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUploadFiles} />
+      <input ref={folderInputRef} type="file" multiple webkitdirectory="true" directory="" className="hidden" onChange={handleUploadFolder} />
         <UpgradeModal 
           isOpen={showUpgrade} 
           onClose={() => setShowUpgrade(false)}
@@ -447,4 +525,3 @@ export default function Files({ authUser }) {
     </div>
   );
 }
-

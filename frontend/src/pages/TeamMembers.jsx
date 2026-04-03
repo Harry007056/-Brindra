@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Mail, MoreVertical, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 const roleTitle = {
@@ -25,6 +26,7 @@ const initials = (name) =>
     .join('') || 'NA';
 
 export default function TeamMembers({ setActiveView }) {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -140,7 +142,10 @@ export default function TeamMembers({ setActiveView }) {
                   onClick={() => {
                     localStorage.setItem('chatTarget', String(member._id || member.name || ''));
                     localStorage.setItem('chatMode', 'direct');
-                    setActiveView('chat');
+                    if (setActiveView) {
+                      setActiveView('chat');
+                    }
+                    navigate('/messages');
                   }}
                   type="button"
                 >

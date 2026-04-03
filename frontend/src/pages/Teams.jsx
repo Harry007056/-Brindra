@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Search, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
 import api from '../api';
@@ -14,6 +15,7 @@ const roleFilterMap = {
 };
 
 export default function Teams({ setActiveView }) {
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [activeFilter, setActiveFilter] = useState('All Members');
@@ -163,7 +165,10 @@ export default function Teams({ setActiveView }) {
                       onClick={() => {
                         localStorage.setItem('chatTarget', String(member._id || ''));
                         localStorage.setItem('chatMode', 'direct');
-                        setActiveView?.('chat');
+                        if (setActiveView) {
+                          setActiveView('chat');
+                        }
+                        navigate('/messages');
                       }}
                     >
                       Message
