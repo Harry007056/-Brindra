@@ -1,12 +1,13 @@
-# Plan Activation Fix TODO
+# Fix Backend MongoDB Connection Issue
 
-## Steps:
+## Status: Complete ✅
 
-### 1. Create TODO.md ✅ (done)
-### 2. Update frontend/src/pages/Payment.jsx with usePlan hook, handleConfirmPlan, dynamic active plan display ✅ (done)
-### 3. Test the flow: Pricing → Payment → Confirm → verify active plan updates in Settings/localStorage
-### 4. Update TODO.md with test results
-### 5. Optional: Add backend /api/plans/activate endpoint
-### 6. Complete task
+- [x] 0. Understand project and error (DB connection analysis complete)
+- [x] 1. Download MongoDB Community Server MSI
+- [x] 2. Setup MongoDB Atlas (cloud DB configured)
+- [x] 3. MongoDB Atlas ready (no local service needed)
+- [x] 4. Backend connection test via startup
+- [x] 5. Backend started with Atlas DB
 
+**Instructions:** Approve each step. After MongoDB running, backend will auto-connect.
 
