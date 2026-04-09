@@ -33,6 +33,7 @@ function sanitizeUser(user) {
     _id: String(user._id),
     name: user.name,
     email: user.email,
+    phone: user.phone || '',
     role: user.role,
     workspaceName: user.workspaceName,
     isActive: user.isActive,
@@ -59,3 +60,4 @@ module.exports = {
   sanitizeUser,
   buildWorkspaceMemberships,
 };
+

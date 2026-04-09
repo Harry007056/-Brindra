@@ -73,6 +73,7 @@ export default function Settings({
   const [profile, setProfile] = useState({
     name: authUser?.name || '',
     email: authUser?.email || '',
+    phone: authUser?.phone || '',
     workspaceName: authUser?.workspaceName || 'Team Workspace',
   });
   const [notifications, setNotifications] = useState({ email: true, push: false });
@@ -119,6 +120,7 @@ const roleDisplayName = (role) => {
         setProfile({
           name: nextProfile.name || '',
           email: nextProfile.email || '',
+          phone: nextProfile.phone || '',
           workspaceName: nextProfile.workspaceName || 'Team Workspace',
         });
         setNotifications({
@@ -195,6 +197,7 @@ const roleDisplayName = (role) => {
       {
         name: nextName,
         email: nextEmail,
+        phone: String(profile.phone || '').trim(),
         workspaceName: String(profile.workspaceName || '').trim() || 'Team Workspace',
       },
       'Profile updated'
@@ -722,3 +725,4 @@ const roleDisplayName = (role) => {
     </div>
   );
 }
+

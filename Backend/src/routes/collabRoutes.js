@@ -34,6 +34,7 @@ router.get('/users', async (req, res) => {
       id: String(user._id),
       name: user.name,
       email: user.email,
+      phone: user.phone || '',
       role: user.role,
       workspaceName: user.workspaceName,
       isActive: user.isActive,
@@ -213,3 +214,4 @@ router.delete('/files/:fileId', async (req, res, next) => {
 });
 
 module.exports = router;
+

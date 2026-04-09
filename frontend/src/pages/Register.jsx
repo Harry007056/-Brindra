@@ -4,9 +4,11 @@ import { motion } from 'framer-motion';
 import { Mail, Sparkles, UserPlus } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api, { setAuthTokens } from '../api';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Register({ onRegisterSuccess, onLoginClick }) {
   const navigate = useNavigate();
+  const { hydrateSession } = useAuth();
   const roleOptions = [
     { value: 'team_leader', label: 'Team Leader' },
     { value: 'manager', label: 'Manager' },
@@ -67,11 +69,12 @@ export default function Register({ onRegisterSuccess, onLoginClick }) {
       sessionStorage.setItem('demoUserName', userName);
       sessionStorage.setItem('demoUserEmail', userEmail);
 
+      await hydrateSession();
       toast.success('Registered and logged in successfully');
       if (onRegisterSuccess) {
         onRegisterSuccess(response.data);
       } else {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
     } catch (error) {
       const message = error?.response?.data?.message || 'Registration failed';
@@ -246,3 +249,4 @@ export default function Register({ onRegisterSuccess, onLoginClick }) {
     </div>
   );
 }
+

@@ -163,12 +163,26 @@ export default function Messages() {
       };
       setMessages((prev) => [normalized, ...prev]);
       setNewMessage('');
+      setError('');
     } catch (err) {
       const message = err?.response?.data?.message || 'Failed to send message';
       setError(message);
     } finally {
       setSending(false);
     }
+  };
+
+  const handleWhatsAppMessage = () => {
+    if (!activeConversation?.id) {
+      setError('Select a conversation first');
+      return;
+    }
+
+    const text = newMessage.trim() || `Message for ${activeConversation.name}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    setError('');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -180,7 +194,7 @@ export default function Messages() {
         className="space-y-1"
       >
         <h1 className="text-3xl font-bold text-accent-warm-grey">Messages</h1>
-        <p className="text-text-default">Chat with your team members in real-time.</p>
+        <p className="text-text-default">Chat with your team members in real-time and jump to WhatsApp when needed.</p>
       </motion.div>
 
       {error && <p className="rounded-xl border border-[#E07A5F]/40 bg-[#E07A5F]/10 px-3 py-2 text-sm text-[#4C566A]">{error}</p>}
@@ -248,6 +262,7 @@ export default function Messages() {
               <div>
                 <h3 className="text-sm font-semibold text-accent-warm-grey">{activeConversation?.name || 'Select a conversation'}</h3>
                 <p className="text-xs text-text-default">{activeConversation?.online ? 'Online' : 'Offline'}</p>
+                {activeConversation && <p className="text-[11px] text-text-default">Open WhatsApp with the draft below.</p>}
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -309,6 +324,14 @@ export default function Messages() {
               />
               <button className="rounded-lg p-2 text-primary-dusty-blue transition hover:bg-background-warm-off-white" type="button">
                 <Smile className="h-4 w-4" />
+              </button>
+              <button
+                className="rounded-lg border border-[#25D366]/30 bg-[#25D366]/10 px-3 py-2 text-xs font-semibold text-[#128C7E] transition hover:bg-[#25D366]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={handleWhatsAppMessage}
+                disabled={!activeConversation?.id}
+                type="button"
+              >
+                WhatsApp
               </button>
               <button
                 className="rounded-lg bg-primary-dusty-blue p-2 text-background-warm-off-white transition hover:bg-primary-soft-sky disabled:cursor-not-allowed disabled:opacity-60"

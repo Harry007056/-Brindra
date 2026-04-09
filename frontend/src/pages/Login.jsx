@@ -4,9 +4,11 @@ import { motion } from 'framer-motion';
 import { LogIn, Mail, Sparkles } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api, { setAuthTokens } from '../api';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Login({ onLoginSuccess, onRegisterClick }) {
   const navigate = useNavigate();
+  const { hydrateSession } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,8 +48,9 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
 
       sessionStorage.setItem('demoUserEmail', userEmail);
 
+      await hydrateSession();
       toast.success('Login successful');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       const message = error?.response?.data?.message || 'Login failed';
       if (error?.response?.status === 401) {
@@ -167,3 +170,4 @@ export default function Login({ onLoginSuccess, onRegisterClick }) {
     </div>
   );
 }
+
