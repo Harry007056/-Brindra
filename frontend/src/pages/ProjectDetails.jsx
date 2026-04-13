@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Calendar, CheckCircle2, Clock, Edit3, MessageSquare, Trash2, Users } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../api';
+import { useAuth } from '../hooks/useAuth';
 
 const isMongoObjectId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || ''));
 
@@ -20,8 +21,10 @@ const fromNow = (value) => {
 };
 
 export default function ProjectDetails({ authUser }) {
+  const { authUser: sessionUser } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
+  const currentUser = authUser || sessionUser;
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
@@ -29,10 +32,9 @@ export default function ProjectDetails({ authUser }) {
   const [newTaskAssigneeId, setNewTaskAssigneeId] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [taskActionLoading, setTaskActionLoading] = useState(false);
+  const [pendingAssignments, setPendingAssignments] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // projectId from route params
 
   useEffect(() => {
     let isMounted = true;
@@ -91,7 +93,7 @@ export default function ProjectDetails({ authUser }) {
     const ids = new Set(tasks.map((task) => String(task.assigneeId || '')).filter(Boolean));
     if (project?.ownerId) ids.add(String(project.ownerId));
     return [...ids]
-      .map((id) => userById[id]?.name)
+      .map((memberId) => userById[memberId]?.name)
       .filter(Boolean)
       .slice(0, 8);
   }, [project, tasks, userById]);
@@ -101,7 +103,8 @@ export default function ProjectDetails({ authUser }) {
     return upcoming[0]?.dueDate ? new Date(upcoming[0].dueDate).toLocaleDateString() : 'Not set';
   }, [tasks]);
 
-  const isTeamLeader = String(authUser?.role || '') === 'team_leader';
+  const canAssignTasks = ['team_leader', 'manager', 'admin'].includes(String(currentUser?.role || ''));
+
   const assignableMembers = useMemo(() => {
     return users
       .filter((user) => user.isActive !== false)
@@ -133,7 +136,7 @@ export default function ProjectDetails({ authUser }) {
       setNewTaskAssigneeId('');
       setNewTaskDueDate('');
       await reloadTasks();
-      toast.success('Task created and assigned');
+      toast.success(newTaskAssigneeId ? 'Task created and assigned' : 'Task created');
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to create task');
     } finally {
@@ -147,14 +150,43 @@ export default function ProjectDetails({ authUser }) {
       const response = await api.put(`/collab/tasks/${taskId}`, patch);
       const updated = response.data;
       setTasks((prev) => prev.map((task) => (String(task._id) === String(taskId) ? updated : task)));
+      return updated;
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to update task');
+      return null;
     } finally {
       setTaskActionLoading(false);
     }
   };
 
+  const handleAssignTask = async (task) => {
+    const taskId = String(task?._id || '');
+    if (!taskId) return;
 
+    const selectedAssigneeId = pendingAssignments[taskId] ?? String(task.assigneeId || '');
+    const currentAssigneeId = String(task.assigneeId || '');
+
+    if (selectedAssigneeId === currentAssigneeId) {
+      toast.info('Select a different member to assign this task');
+      return;
+    }
+
+    const updated = await handleTaskUpdate(taskId, { assigneeId: selectedAssigneeId || null });
+    if (!updated) return;
+
+    setPendingAssignments((prev) => {
+      const next = { ...prev };
+      delete next[taskId];
+      return next;
+    });
+
+    if (selectedAssigneeId) {
+      const assigneeName = userById[selectedAssigneeId]?.name || 'member';
+      toast.success(`Task assigned to ${assigneeName}`);
+    } else {
+      toast.success('Task unassigned');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -165,19 +197,23 @@ export default function ProjectDetails({ authUser }) {
         transition={{ duration: 0.4 }}
         className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-5 shadow-sm"
       >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <button
-            className="mb-2 text-sm text-primary-dusty-blue hover:text-primary-soft-sky"
-            onClick={() => navigate('/projects')}
-            type="button"
-          >
-            Back
-          </button>
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-accent-warm-grey">{project?.name || 'Project Details'}</h1>
-            <p className="max-w-3xl text-sm text-text-default">{project?.description || 'No description available.'}</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <button
+              className="mb-3 text-sm text-primary-dusty-blue hover:text-primary-soft-sky"
+              onClick={() => navigate('/projects')}
+              type="button"
+            >
+              Back
+            </button>
+            <div className="min-w-0 space-y-1">
+              <h1 className="break-words text-3xl font-bold text-accent-warm-grey">{project?.name || 'Project Details'}</h1>
+              <p className="max-w-3xl break-words text-sm leading-6 text-text-default">
+                {project?.description || 'No description available.'}
+              </p>
+            </div>
           </div>
-          <span className="rounded-full bg-primary-soft-sky/25 px-3 py-1 text-xs font-medium text-[#4C566A]">
+          <span className="shrink-0 self-start rounded-full bg-primary-soft-sky/25 px-3 py-1 text-xs font-medium text-[#4C566A]">
             {project?.status || 'active'}
           </span>
         </div>
@@ -267,41 +303,59 @@ export default function ProjectDetails({ authUser }) {
           className="rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-4 shadow-sm"
         >
           <h2 className="text-lg font-semibold text-accent-warm-grey">Milestones</h2>
-          {isTeamLeader && (
-            <div className="mt-3 grid grid-cols-1 gap-2 rounded-xl bg-background-light-sand p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
-              <input
-                type="text"
-                placeholder="Task title"
-                value={newTaskTitle}
-                onChange={(event) => setNewTaskTitle(event.target.value)}
-                className="w-full min-w-0 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-accent-warm-grey outline-none md:col-span-2 xl:col-span-1"
-              />
-              <select
-                value={newTaskAssigneeId}
-                onChange={(event) => setNewTaskAssigneeId(event.target.value)}
-                className="w-full min-w-0 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-2 py-2 text-sm text-accent-warm-grey outline-none"
-              >
-                <option value="">Assign member</option>
-                {assignableMembers.map((member) => (
-                  <option key={String(member._id)} value={String(member._id)}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="date"
-                value={newTaskDueDate}
-                onChange={(event) => setNewTaskDueDate(event.target.value)}
-                className="w-full min-w-0 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-2 py-2 text-sm text-accent-warm-grey outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleCreateTask}
-                disabled={taskActionLoading || !newTaskTitle.trim()}
-                className="whitespace-nowrap rounded-lg bg-primary-dusty-blue px-3 py-2 text-sm font-medium text-background-warm-off-white disabled:opacity-60 md:col-span-2 xl:col-span-1"
-              >
-                Add
-              </button>
+          {canAssignTasks && (
+            <div className="mt-3 rounded-xl bg-background-light-sand p-3">
+              <div className="grid grid-cols-1 gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-text-default">Task Name</span>
+                  <input
+                    type="text"
+                    placeholder="Enter task title"
+                    value={newTaskTitle}
+                    onChange={(event) => setNewTaskTitle(event.target.value)}
+                    className="w-full min-w-0 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2 text-sm text-accent-warm-grey outline-none"
+                  />
+                </label>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_170px_auto]">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-text-default">Assign Member</span>
+                    <select
+                      value={newTaskAssigneeId}
+                      onChange={(event) => setNewTaskAssigneeId(event.target.value)}
+                      className="w-full min-w-0 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-2 py-2 text-sm text-accent-warm-grey outline-none"
+                    >
+                      <option value="">Select member</option>
+                      {assignableMembers.map((member) => (
+                        <option key={String(member._id)} value={String(member._id)}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-text-default">Due Date</span>
+                    <input
+                      type="date"
+                      value={newTaskDueDate}
+                      onChange={(event) => setNewTaskDueDate(event.target.value)}
+                      className="w-full min-w-0 rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-2 py-2 text-sm text-accent-warm-grey outline-none"
+                    />
+                  </label>
+
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={handleCreateTask}
+                      disabled={taskActionLoading || !newTaskTitle.trim()}
+                      className="w-full whitespace-nowrap rounded-lg bg-primary-dusty-blue px-3 py-2 text-sm font-medium text-background-warm-off-white disabled:opacity-60"
+                    >
+                      Add Task
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
@@ -311,26 +365,41 @@ export default function ProjectDetails({ authUser }) {
                   <p className="text-sm text-accent-warm-grey">{item.title}</p>
                   <p className="text-xs text-text-default">
                     Assigned: {userById[String(item.assigneeId)]?.name || 'Unassigned'}
-                    {item.dueDate ? ` • Due ${new Date(item.dueDate).toLocaleDateString()}` : ''}
+                    {item.dueDate ? ` | Due ${new Date(item.dueDate).toLocaleDateString()}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isTeamLeader && (
-                    <select
-                      value={String(item.assigneeId || '')}
-                      onChange={(event) => handleTaskUpdate(String(item._id), { assigneeId: event.target.value || null })}
-                      disabled={taskActionLoading}
-                      className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-2 py-1 text-xs text-accent-warm-grey outline-none"
-                    >
-                      <option value="">Unassigned</option>
-                      {assignableMembers.map((member) => (
-                        <option key={String(member._id)} value={String(member._id)}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
+                  {canAssignTasks && (
+                    <>
+                      <select
+                        value={pendingAssignments[String(item._id)] ?? String(item.assigneeId || '')}
+                        onChange={(event) =>
+                          setPendingAssignments((prev) => ({
+                            ...prev,
+                            [String(item._id)]: event.target.value,
+                          }))
+                        }
+                        disabled={taskActionLoading}
+                        className="rounded-lg border border-[#88C0D0]/35 bg-background-warm-off-white px-2 py-1 text-xs text-accent-warm-grey outline-none"
+                      >
+                        <option value="">Unassigned</option>
+                        {assignableMembers.map((member) => (
+                          <option key={String(member._id)} value={String(member._id)}>
+                            {member.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => handleAssignTask(item)}
+                        disabled={taskActionLoading}
+                        className="rounded-lg bg-primary-dusty-blue px-2 py-1 text-xs font-medium text-background-warm-off-white disabled:opacity-60"
+                      >
+                        Assign
+                      </button>
+                    </>
                   )}
-                  {isTeamLeader ? (
+                  {canAssignTasks ? (
                     <button
                       type="button"
                       onClick={() => handleTaskUpdate(String(item._id), { completed: !item.completed })}
