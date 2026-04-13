@@ -28,11 +28,6 @@ const UserSchema = new mongoose.Schema(
       default: 'Team Workspace',
       trim: true,
     },
-    phone: {
-      type: String,
-      default: '',
-      trim: true,
-    },
     isActive: {
       type: Boolean,
       default: true,
@@ -61,4 +56,3 @@ const UserSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model('User', UserSchema);
-

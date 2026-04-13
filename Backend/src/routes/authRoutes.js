@@ -157,7 +157,6 @@ router.get('/settings', requireAuth, async (req, res) => {
     profile: {
       name: req.user.name,
       email: req.user.email,
-      phone: req.user.phone || '',
       workspaceName: req.user.workspaceName,
     },
     settings: req.user.settings || {},
@@ -166,11 +165,10 @@ router.get('/settings', requireAuth, async (req, res) => {
 
 router.put('/settings', requireAuth, async (req, res, next) => {
   try {
-    const { name, email, phone, workspaceName, settings } = req.body;
+    const { name, email, workspaceName, settings } = req.body;
 
     if (typeof name === 'string') req.user.name = name.trim() || req.user.name;
     if (typeof workspaceName === 'string') req.user.workspaceName = workspaceName.trim() || req.user.workspaceName;
-    if (typeof phone === 'string') req.user.phone = phone.trim();
 
     if (typeof email === 'string' && email.trim()) {
       const normalizedEmail = email.toLowerCase().trim();
@@ -239,4 +237,3 @@ router.put('/change-password', requireAuth, async (req, res, next) => {
 });
 
 module.exports = router;
-
