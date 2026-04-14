@@ -425,4 +425,25 @@ router.delete('/files/:fileId', async (req, res, next) => {
   }
 });
 
+router.delete('/users/:userId', async (req, res, next) => {
+  try {
+    // Prevent users from deleting themselves
+    if (req.params.userId === String(req.user._id)) {
+      const error = new Error('Cannot delete your own account');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const user = await User.findByIdAndDelete(req.params.userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
