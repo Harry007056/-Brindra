@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, Activity, Users, TrendingUp, CalendarDays } from 'lucide-react';
+import { BarChart3, Activity, Users, TrendingUp, CalendarDays, Loader2, TrendingDown, Minus } from 'lucide-react';
+import { io } from 'socket.io-client';
+import api from '../api';
+import { SOCKET_URL } from '../config';
+import { useAuth } from '../hooks/useAuth';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -12,14 +16,196 @@ const stagger = {
   show: { transition: { staggerChildren: 0.1 } },
 };
 
-const metrics = [
-  { label: 'Active Projects', value: 24, change: '+12%', color: 'from-[#5E81AC] to-[#88C0D0]', icon: TrendingUp },
-  { label: 'Team Members', value: 18, change: '+3%', color: 'from-[#A3BE8C] to-[#6B8E23]', icon: Users },
-  { label: 'Tasks Completed', value: 156, change: '+28%', color: 'from-[#BF616A] to-[#D08770]', icon: Activity },
-  { label: 'Avg Completion', value: '92%', change: '+4%', color: 'from-[#8FBCBB] to-[#88C0D0]', icon: BarChart3 },
-];
+const TrendIcon = ({ trend }) => {
+  if (trend === 'up') return <TrendingUp className="h-3 w-3" />;
+  if (trend === 'down') return <TrendingDown className="h-3 w-3" />;
+  return <Minus className="h-3 w-3" />;
+};
+
+const timeAgo = (value) => {
+  if (!value) return 'just now';
+  const diff = Date.now() - new Date(value).getTime();
+  if (diff < 60000) return 'just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
 
 export default function Analytics() {
+  const { authUser } = useAuth();
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const socketRef = useRef(null);
+  const authUserIdRef = useRef('');
+
+  useEffect(() => {
+    authUserIdRef.current = String(authUser?.id || authUser?._id || '');
+  }, [authUser]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadAnalytics = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const response = await api.get('/collab/analytics');
+        if (!mounted) return;
+        setAnalytics(response.data);
+      } catch {
+        if (!mounted) return;
+        setError('Failed to load analytics');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadAnalytics();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const userId = String(authUser?.id || authUser?._id || '');
+    if (!userId) return undefined;
+
+    const socket = io(SOCKET_URL, {
+      withCredentials: true,
+      transports: ['polling', 'websocket'],
+      upgrade: false,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('join_user', userId);
+    });
+
+    // Listen for real-time updates that affect analytics
+    socket.on('task:created', () => {
+      // Refresh analytics when tasks are created
+      api.get('/collab/analytics').then((response) => {
+        setAnalytics(response.data);
+      }).catch(() => {});
+    });
+
+    socket.on('task:completed', () => {
+      // Refresh analytics when tasks are completed
+      api.get('/collab/analytics').then((response) => {
+        setAnalytics(response.data);
+      }).catch(() => {});
+    });
+
+    socket.on('task:updated', () => {
+      // Refresh analytics when tasks are updated
+      api.get('/collab/analytics').then((response) => {
+        setAnalytics(response.data);
+      }).catch(() => {});
+    });
+
+    socket.on('notification:new', (notification) => {
+      // Refresh analytics when we get task/project related notifications
+      if (['task', 'project'].includes(notification.type)) {
+        api.get('/collab/analytics').then((response) => {
+          setAnalytics(response.data);
+        }).catch(() => {});
+      }
+    });
+
+    socket.on('project_message:new', () => {
+      // Refresh analytics when new messages are posted (affects activity)
+      api.get('/collab/analytics').then((response) => {
+        setAnalytics(response.data);
+      }).catch(() => {});
+    });
+
+    socket.on('direct_message:new', () => {
+      // Refresh analytics when new direct messages are posted
+      api.get('/collab/analytics').then((response) => {
+        setAnalytics(response.data);
+      }).catch(() => {});
+    });
+
+    return () => {
+      socket.emit('leave_user', userId);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [authUser]);
+
+  const metrics = useMemo(() => {
+    if (!analytics?.metrics) return [];
+
+    return [
+      {
+        label: 'Active Projects',
+        value: analytics.metrics.activeProjects.value,
+        change: analytics.metrics.activeProjects.change,
+        trend: analytics.metrics.activeProjects.trend,
+        color: 'from-[#5E81AC] to-[#88C0D0]',
+        icon: TrendingUp
+      },
+      {
+        label: 'Team Members',
+        value: analytics.metrics.teamMembers.value,
+        change: analytics.metrics.teamMembers.change,
+        trend: analytics.metrics.teamMembers.trend,
+        color: 'from-[#A3BE8C] to-[#6B8E23]',
+        icon: Users
+      },
+      {
+        label: 'Tasks Completed',
+        value: analytics.metrics.tasksCompleted.value,
+        change: analytics.metrics.tasksCompleted.change,
+        trend: analytics.metrics.tasksCompleted.trend,
+        color: 'from-[#BF616A] to-[#D08770]',
+        icon: Activity
+      },
+      {
+        label: 'Completion Rate',
+        value: analytics.metrics.completionRate.value,
+        change: analytics.metrics.completionRate.change,
+        trend: analytics.metrics.completionRate.trend,
+        color: 'from-[#8FBCBB] to-[#88C0D0]',
+        icon: BarChart3
+      },
+    ];
+  }, [analytics]);
+
+  const recentActivity = useMemo(() => {
+    if (!analytics?.recentActivity) return [];
+
+    return analytics.recentActivity.map((item, index) => ({
+      time: timeAgo(item.time),
+      action: item.action,
+      details: item.details,
+      index
+    }));
+  }, [analytics]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-dusty-blue" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial="hidden"
@@ -60,7 +246,11 @@ export default function Analytics() {
                 <div className="p-3 rounded-xl bg-white/50 backdrop-blur-sm group-hover:bg-primary-soft-sky/20 transition-all">
                   <Icon className="h-6 w-6 text-primary-dusty-blue opacity-80 group-hover:text-background-warm-off-white" />
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm ${metric.change.startsWith('+') ? 'text-secondary-olive-accent' : 'text-accent-muted-coral'}`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm flex items-center gap-1 ${
+                  metric.trend === 'up' ? 'text-secondary-olive-accent' :
+                  metric.trend === 'down' ? 'text-accent-muted-coral' : 'text-text-default'
+                }`}>
+                  <TrendIcon trend={metric.trend} />
                   {metric.change}
                 </span>
               </div>
@@ -81,39 +271,51 @@ export default function Analytics() {
             Recent Activity
           </h3>
           <div className="space-y-3">
-            {[
-              { time: '2h ago', action: 'Priya completed "API Rate Limiting"', project: 'Backend Sprint' },
-              { time: '5h ago', action: 'Aman assigned 3 tasks', project: 'Q3 Design System' },
-              { time: '1d ago', action: 'You reviewed 4 PRs', project: 'Mobile Auth Flow' },
-              { time: '2d ago', action: 'Team milestone reached', project: 'Client Delivery' },
-            ].map((item) => (
-              <div key={item.time} className="flex items-start gap-3 p-3 rounded-xl hover:bg-background-light-sand transition-colors group">
-                <div className="w-2 h-2 bg-primary-dusty-blue rounded-full mt-2 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text-main group-hover:text-primary-dusty-blue">{item.action}</p>
-                  <p className="text-xs text-text-default mt-1">{item.project}</p>
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-text-default">No recent activity</p>
+            ) : (
+              recentActivity.map((item) => (
+                <div key={item.index} className="flex items-start gap-3 p-3 rounded-xl hover:bg-background-light-sand transition-colors group">
+                  <div className="w-2 h-2 bg-primary-dusty-blue rounded-full mt-2 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text-main group-hover:text-primary-dusty-blue">{item.action}</p>
+                    <p className="text-xs text-text-default mt-1 truncate">{item.details}</p>
+                  </div>
+                  <span className="text-xs font-mono text-text-muted whitespace-nowrap flex-shrink-0">{item.time}</span>
                 </div>
-                <span className="text-xs font-mono text-text-muted whitespace-nowrap flex-shrink-0">{item.time}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-primary-soft-sky/5 to-secondary-sage-green/5 rounded-2xl border border-[#88C0D0]/25 p-6 shadow-sm">
-          <h3 className="text-xl font-semibold text-accent-warm-grey mb-6">Project Velocity</h3>
+        {/* Project Overview */}
+        <div className="bg-background-warm-off-white rounded-2xl border border-[#88C0D0]/25 p-6 shadow-sm">
+          <h3 className="text-xl font-semibold text-accent-warm-grey mb-6 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Project Overview
+          </h3>
           <div className="space-y-4">
-            <div className="flex justify-between items-end">
-              <span className="text-sm text-text-default font-medium">Sprint Velocity</span>
-              <span className="text-2xl font-bold text-primary-dusty-blue">18 pts/wk</span>
-            </div>
-            <div className="w-full bg-background-light-sand rounded-full h-3">
-              <div className="bg-gradient-to-r from-secondary-olive-accent to-primary-dusty-blue h-3 rounded-full" style={{ width: '78%' }} />
-            </div>
-            <div className="text-xs text-text-default grid grid-cols-3 gap-2 mt-2">
-              <span>Week -2: 15</span>
-              <span>Week -1: 17</span>
-              <span>Current: 18</span>
-            </div>
+            {analytics?.projectStats?.length === 0 ? (
+              <p className="text-sm text-text-default">No projects found</p>
+            ) : (
+              analytics?.projectStats?.slice(0, 5).map((project) => (
+                <div key={String(project.id)} className="flex items-center justify-between p-3 rounded-xl hover:bg-background-light-sand transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-accent-warm-grey truncate">{project.name}</p>
+                    <p className="text-xs text-text-default">
+                      {project.completedTasks}/{project.taskCount} tasks • {project.activeMembers} members
+                    </p>
+                  </div>
+                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    project.status === 'active' ? 'bg-secondary-olive-accent/20 text-secondary-olive-accent' :
+                    project.status === 'completed' ? 'bg-primary-soft-sky/20 text-primary-dusty-blue' :
+                    'bg-accent-muted-coral/20 text-accent-muted-coral'
+                  }`}>
+                    {project.status}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </motion.section>

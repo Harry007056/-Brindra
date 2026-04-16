@@ -243,6 +243,21 @@ router.post('/tasks', async (req, res, next) => {
       });
     }
 
+    // Emit real-time task creation event
+    const io = req.app.get('io');
+    if (io) {
+      // Emit to all users who have access to this project
+      const projectMembers = await Task.find({ projectId: project._id }).distinct('assigneeId');
+      const uniqueMembers = [...new Set([project.ownerId, ...projectMembers].filter(Boolean))];
+
+      uniqueMembers.forEach(memberId => {
+        io.to(`user:${String(memberId)}`).emit('task:created', {
+          task,
+          project: { _id: project._id, name: project.name }
+        });
+      });
+    }
+
     res.status(201).json(task);
   } catch (error) {
     next(error);
@@ -259,6 +274,7 @@ router.put('/tasks/:taskId', async (req, res, next) => {
     }
 
     const previousAssigneeId = String(task.assigneeId || '');
+    const wasCompleted = task.completed;
 
     if (typeof req.body.title === 'string') task.title = req.body.title.trim() || task.title;
     if ('completed' in req.body) task.completed = Boolean(req.body.completed);
@@ -277,6 +293,28 @@ router.put('/tasks/:taskId', async (req, res, next) => {
         project,
         action: previousAssigneeId ? 'reassigned' : 'assigned',
         io: req.app.get('io'),
+      });
+    }
+
+    // Emit real-time task update event
+    const io = req.app.get('io');
+    if (io) {
+      const project = await Project.findById(task.projectId);
+      const projectMembers = await Task.find({ projectId: task.projectId }).distinct('assigneeId');
+      const uniqueMembers = [...new Set([project.ownerId, ...projectMembers].filter(Boolean))];
+
+      const eventType = task.completed && !wasCompleted ? 'task:completed' :
+                       !task.completed && wasCompleted ? 'task:reopened' : 'task:updated';
+
+      uniqueMembers.forEach(memberId => {
+        io.to(`user:${String(memberId)}`).emit(eventType, {
+          task,
+          project: { _id: project._id, name: project.name },
+          changes: {
+            completed: task.completed !== wasCompleted,
+            assigneeChanged: nextAssigneeId !== previousAssigneeId
+          }
+        });
       });
     }
 
@@ -320,6 +358,128 @@ router.put('/notifications/:notificationId/read', async (req, res, next) => {
 router.delete('/notifications', async (req, res) => {
   await Notification.deleteMany({ receiverId: req.user._id });
   res.json({ message: 'Notifications cleared' });
+});
+
+router.get('/analytics', async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const userRole = String(req.user.role || 'member');
+
+    // Get all projects (filtered by access level)
+    let projectsQuery = {};
+    if (!['team_leader', 'manager', 'admin'].includes(userRole)) {
+      // Regular members only see projects they own or are assigned to tasks in
+      const userTasks = await Task.find({ assigneeId: userId }).distinct('projectId');
+      projectsQuery = {
+        $or: [
+          { ownerId: userId },
+          { _id: { $in: userTasks } }
+        ]
+      };
+    }
+    const projects = await Project.find(projectsQuery);
+
+    // Get all tasks for user's accessible projects
+    const projectIds = projects.map(p => p._id);
+    const tasks = await Task.find({ projectId: { $in: projectIds } });
+
+    // Get all users (for team member count)
+    const users = await User.find();
+
+    // Get recent messages (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    let messagesQuery = { createdAt: { $gte: thirtyDaysAgo } };
+    if (!['team_leader', 'manager', 'admin'].includes(userRole)) {
+      // Regular members only see messages in their projects
+      messagesQuery.projectId = { $in: projectIds };
+    }
+    const messages = await Message.find(messagesQuery);
+
+    // Calculate metrics
+    const activeProjects = projects.filter(p => p.status === 'active').length;
+    const completedTasks = tasks.filter(t => t.completed).length;
+    const totalTasks = tasks.length;
+    const activeUsers = users.filter(u => u.isActive !== false).length;
+
+    // Calculate completion rate (tasks completed in last 30 days)
+    const recentCompletedTasks = tasks.filter(t =>
+      t.completed && new Date(t.updatedAt || t.createdAt) >= thirtyDaysAgo
+    ).length;
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Calculate activity trends (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentTasks = tasks.filter(t => new Date(t.createdAt) >= sevenDaysAgo).length;
+    const recentMessages = messages.filter(m => new Date(m.createdAt) >= sevenDaysAgo).length;
+
+    // Calculate task completion trend
+    const previousPeriodTasks = tasks.filter(t =>
+      new Date(t.createdAt) >= new Date(sevenDaysAgo.getTime() - 7 * 24 * 60 * 60 * 1000) &&
+      new Date(t.createdAt) < sevenDaysAgo
+    ).length;
+    const taskChange = previousPeriodTasks > 0 ?
+      Math.round(((recentTasks - previousPeriodTasks) / previousPeriodTasks) * 100) : 0;
+
+    const analytics = {
+      metrics: {
+        activeProjects: {
+          value: activeProjects,
+          change: `+${projects.length - activeProjects} inactive`,
+          trend: activeProjects > projects.length * 0.5 ? 'up' : 'down'
+        },
+        teamMembers: {
+          value: activeUsers,
+          change: `+${users.length - activeUsers} inactive`,
+          trend: 'stable'
+        },
+        tasksCompleted: {
+          value: completedTasks,
+          change: `+${recentCompletedTasks} this month`,
+          trend: completedTasks > totalTasks * 0.5 ? 'up' : 'down'
+        },
+        completionRate: {
+          value: `${completionRate}%`,
+          change: `+${taskChange > 0 ? taskChange : 0}% this week`,
+          trend: taskChange > 0 ? 'up' : 'down'
+        }
+      },
+      recentActivity: messages.slice(-5).map(message => ({
+        time: message.createdAt,
+        action: 'Message posted',
+        details: message.body?.substring(0, 50) + (message.body?.length > 50 ? '...' : ''),
+        projectId: message.projectId,
+        userId: message.senderId
+      })).concat(
+        tasks.filter(t => new Date(t.createdAt) >= sevenDaysAgo).slice(-3).map(task => ({
+          time: task.createdAt,
+          action: task.completed ? 'Task completed' : 'Task created',
+          details: task.title,
+          projectId: task.projectId,
+          userId: task.assigneeId
+        }))
+      ).sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8),
+      projectStats: projects.map(project => ({
+        id: project._id,
+        name: project.name,
+        status: project.status,
+        taskCount: tasks.filter(t => String(t.projectId) === String(project._id)).length,
+        completedTasks: tasks.filter(t => String(t.projectId) === String(project._id) && t.completed).length,
+        activeMembers: [...new Set(tasks
+          .filter(t => String(t.projectId) === String(project._id))
+          .map(t => t.assigneeId)
+          .filter(Boolean)
+        )].length
+      }))
+    };
+
+    res.json(analytics);
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ message: 'Failed to fetch analytics' });
+  }
 });
 
 router.get('/messages', async (req, res) => {

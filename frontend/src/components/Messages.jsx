@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Send, Paperclip, Smile, MoreVertical, Phone, Video } from 'lucide-react';
 import { clsx } from 'clsx';
+import { io } from 'socket.io-client';
 import api from '../api';
-
-const POLL_INTERVAL_MS = 3000;
+import { SOCKET_URL } from '../config';
 
 const initials = (name) =>
   String(name || '')
@@ -35,38 +35,35 @@ export default function Messages() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
+  const socketRef = useRef(null);
+  const authUserIdRef = useRef('');
+
   useEffect(() => {
     let isMounted = true;
-    let pollTimer = null;
-
-    const pullMessages = async (userId) => {
-      try {
-        const response = await api.get('/collab/messages', { params: { userId } });
-        if (!isMounted) return;
-        const data = Array.isArray(response.data) ? response.data.slice().sort(byNewest) : [];
-        setMessages(data);
-      } catch {
-        if (isMounted) setError('Failed to refresh messages');
-      }
-    };
 
     const load = async () => {
       setLoading(true);
       setError('');
       try {
-        const [usersRes, meRes, projectsRes] = await Promise.all([api.get('/collab/users'), api.get('/auth/me'), api.get('/collab/projects')]);
+        const [usersRes, meRes, projectsRes, messagesRes] = await Promise.all([
+          api.get('/collab/users'),
+          api.get('/auth/me'),
+          api.get('/collab/projects'),
+          api.get('/collab/messages'),
+        ]);
 
         if (!isMounted) return;
 
         const usersData = Array.isArray(usersRes.data) ? usersRes.data : [];
         const projectsData = Array.isArray(projectsRes.data) ? projectsRes.data : [];
         const meId = String(meRes.data?.user?.id || '');
+        const messagesData = Array.isArray(messagesRes.data) ? messagesRes.data.slice().sort(byNewest) : [];
 
         setUsers(usersData);
         setProjects(projectsData);
         setAuthUserId(meId);
-
-        await pullMessages(meId);
+        authUserIdRef.current = meId;
+        setMessages(messagesData);
 
         const initialTarget = localStorage.getItem('chatTarget');
         const matchedUser = usersData.find((u) => u.name === initialTarget || String(u._id) === initialTarget);
@@ -79,9 +76,39 @@ export default function Messages() {
           setActiveChat(String(fallbackUser._id));
         }
 
-        pollTimer = setInterval(() => {
-          pullMessages(meId);
-        }, POLL_INTERVAL_MS);
+        // Setup Socket.IO for real-time messages
+        const socket = io(SOCKET_URL, {
+          withCredentials: true,
+          transports: ['polling', 'websocket'],
+          upgrade: false,
+        });
+
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          if (meId) {
+            socket.emit('join_user', meId);
+          }
+        });
+
+        socket.on('direct_message:new', (incoming) => {
+          if (!incoming) return;
+          if (!isMounted) return;
+
+          const senderId = String(incoming.senderId || '');
+          const receiverId = String(incoming.receiverId || '');
+          const currentUserId = authUserIdRef.current;
+
+          // Only add message if it involves the current user
+          if (senderId === currentUserId || receiverId === currentUserId) {
+            setMessages((prev) => {
+              // Check if message already exists
+              const id = String(incoming._id || '');
+              if (id && prev.some((item) => String(item._id || '') === id)) return prev;
+              return [incoming, ...prev].sort(byNewest);
+            });
+          }
+        });
       } catch {
         if (!isMounted) return;
         setError('Failed to load messages');
@@ -94,7 +121,11 @@ export default function Messages() {
 
     return () => {
       isMounted = false;
-      if (pollTimer) clearInterval(pollTimer);
+      const socket = socketRef.current;
+      if (socket) {
+        socket.disconnect();
+      }
+      socketRef.current = null;
     };
   }, []);
 
