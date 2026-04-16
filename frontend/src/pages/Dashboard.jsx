@@ -1,5 +1,8 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config';
+import { useAuth } from '../hooks/useAuth';
 import {
   TrendingUp,
   Users,
@@ -58,6 +61,8 @@ const colorByStatus = {
 };
 
 export default function Dashboard({ userName }) {
+  const { authUser } = useAuth();
+  const socketRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [users, setUsers] = useState([]);
@@ -97,6 +102,50 @@ export default function Dashboard({ userName }) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const userId = String(authUser?.id || authUser?._id || '');
+    if (!userId) return undefined;
+
+    const socket = io(SOCKET_URL, {
+      withCredentials: true,
+      transports: ['polling', 'websocket'],
+      upgrade: false,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('join_user', userId);
+    });
+
+    const refreshTasks = async () => {
+      try {
+        const response = await api.get('/collab/tasks');
+        setTasks(Array.isArray(response.data) ? response.data : []);
+      } catch {}
+    };
+
+    const refreshMessages = async () => {
+      try {
+        const response = await api.get('/collab/messages');
+        setMessages(Array.isArray(response.data) ? response.data : []);
+      } catch {}
+    };
+
+    socket.on('task:created', refreshTasks);
+    socket.on('task:completed', refreshTasks);
+    socket.on('task:reopened', refreshTasks);
+    socket.on('task:updated', refreshTasks);
+    socket.on('project_message:new', refreshMessages);
+    socket.on('direct_message:new', refreshMessages);
+
+    return () => {
+      socket.emit('leave_user', userId);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [authUser]);
 
   useEffect(() => {
     if (!tasks.length) return;

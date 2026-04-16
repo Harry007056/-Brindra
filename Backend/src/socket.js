@@ -1,5 +1,6 @@
 function configureSocket(io) {
   io.on('connection', (socket) => {
+    // Room management
     socket.on('join_user', (userId) => {
       if (!userId) return;
       socket.join(`user:${String(userId)}`);
@@ -20,6 +21,7 @@ function configureSocket(io) {
       socket.leave(`project:${String(projectId)}`);
     });
 
+    // Typing indicators
     socket.on('project_typing', (payload) => {
       if (!payload?.projectId) return;
       socket.to(`project:${String(payload.projectId)}`).emit('project_typing', payload);
@@ -29,6 +31,11 @@ function configureSocket(io) {
       if (!payload?.receiverId) return;
       socket.to(`user:${String(payload.receiverId)}`).emit('direct_typing', payload);
     });
+
+    // Note: Message events are emitted from API endpoint in collabRoutes
+    // when POST /messages is called. Events:
+    // - 'project_message:new' for project messages
+    // - 'direct_message:new' for direct messages
   });
 }
 
