@@ -645,7 +645,7 @@ export default function Chat() {
       >
         <aside className="h-full overflow-hidden rounded-2xl border border-[#D9E1D7] bg-background-warm-off-white p-3 shadow-sm">
           <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-text-default">Projects</h2>
-          <div className="max-h-[calc(36vh-2.5rem)] space-y-1 overflow-y-auto pr-1">
+          <div className="chat-scrollbar max-h-[calc(36vh-2.5rem)] space-y-1 overflow-y-auto pr-1">
             {visibleProjects.map((project) => (
               <button
                 key={String(project._id)}
@@ -678,7 +678,7 @@ export default function Chat() {
           </div>
 
           <h2 className="mb-2 mt-4 px-1 text-sm font-semibold uppercase tracking-wide text-text-default">Private Chats</h2>
-          <div className="max-h-[calc(36vh-2.5rem)] space-y-1 overflow-y-auto pr-1">
+          <div className="chat-scrollbar max-h-[calc(36vh-2.5rem)] space-y-1 overflow-y-auto pr-1">
             {privateChats.map((chat) => (
               <button
                 key={chat.peerId}
@@ -722,7 +722,7 @@ export default function Chat() {
             )}
           </div>
 
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background-warm-off-white/60 p-4">
+          <div className="chat-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto bg-background-warm-off-white/60 p-4">
             {displayedMessages.map((msg) => {
               const senderId = senderIdOf(msg);
               const isMe = senderId === meId;
@@ -818,7 +818,7 @@ export default function Chat() {
             <Users className="h-4 w-4 text-primary-dusty-blue" />
             <h2 className="text-sm font-semibold uppercase tracking-wide text-text-default">Project Members</h2>
           </div>
-          <div className="max-h-[calc(72vh-4.5rem)] space-y-1 overflow-y-auto pr-1">
+          <div className="chat-scrollbar max-h-[calc(72vh-4.5rem)] space-y-1 overflow-y-auto pr-1">
             {activeProjectMembers.map((member) => {
               const memberId = String(member._id);
               const isActiveDirect = mode === 'direct' && String(activeDirectUserId) === memberId;
@@ -864,4 +864,3 @@ export default function Chat() {
     </div>
   );
 }
-

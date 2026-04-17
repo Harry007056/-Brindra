@@ -6,6 +6,8 @@ import { io } from 'socket.io-client';
 import api from '../api';
 import { SOCKET_URL } from '../config';
 
+const sanitizePhone = (value) => String(value || '').replace(/[^\d+]/g, '');
+
 const initials = (name) =>
   String(name || '')
     .trim()
@@ -160,6 +162,33 @@ export default function Messages() {
 
   const activeConversation = conversations.find((conv) => conv.id === activeChat) || conversations[0] || null;
   const defaultProjectId = projects[0]?._id ? String(projects[0]._id) : '';
+  const activeUser = users.find((user) => String(user._id) === String(activeConversation?.id || '')) || null;
+  const activePhone = sanitizePhone(activeUser?.phone);
+
+  const handlePhoneCall = () => {
+    if (!activePhone) {
+      setError('This teammate has not added a phone number yet.');
+      return;
+    }
+
+    window.location.href = `tel:${activePhone}`;
+  };
+
+  const handleGoogleMeet = () => {
+    if (!activeUser) {
+      setError('Select a conversation to start a meeting.');
+      return;
+    }
+
+    const inviteText = `Google Meet with ${activeUser.name}${activeUser.email ? ` (${activeUser.email})` : ''}`;
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(inviteText).catch(() => {});
+      }
+    } catch {}
+
+    window.open('https://meet.google.com/new', '_blank', 'noopener,noreferrer');
+  };
 
   const activeMessages = useMemo(() => {
     if (!activeConversation || !authUserId) return [];
@@ -236,7 +265,7 @@ export default function Messages() {
             </div>
           </div>
 
-          <div className="max-h-[60vh] overflow-y-auto p-2">
+          <div className="chat-scrollbar max-h-[60vh] overflow-y-auto p-2">
             {conversations.map((conv) => (
               <button
                 key={conv.id}
@@ -278,14 +307,29 @@ export default function Messages() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-accent-warm-grey">{activeConversation?.name || 'Select a conversation'}</h3>
-                <p className="text-xs text-text-default">{activeConversation?.online ? 'Online' : 'Offline'}</p>
+                <p className="text-xs text-text-default">
+                  {activeConversation?.online ? 'Online' : 'Offline'}
+                  {activeUser?.phone ? ` • ${activeUser.phone}` : ''}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <button className="rounded-lg p-2 text-primary-dusty-blue transition hover:bg-background-light-sand" type="button">
+              <button
+                className="rounded-lg p-2 text-primary-dusty-blue transition hover:bg-background-light-sand disabled:cursor-not-allowed disabled:opacity-50"
+                type="button"
+                onClick={handlePhoneCall}
+                disabled={!activeConversation?.id || !activePhone}
+                title={activePhone ? `Call ${activeConversation?.name}` : 'No phone number available'}
+              >
                 <Phone className="h-4 w-4" />
               </button>
-              <button className="rounded-lg p-2 text-primary-dusty-blue transition hover:bg-background-light-sand" type="button">
+              <button
+                className="rounded-lg p-2 text-primary-dusty-blue transition hover:bg-background-light-sand disabled:cursor-not-allowed disabled:opacity-50"
+                type="button"
+                onClick={handleGoogleMeet}
+                disabled={!activeConversation?.id}
+                title={activeConversation?.id ? `Start Google Meet with ${activeConversation?.name}` : 'Select a conversation'}
+              >
                 <Video className="h-4 w-4" />
               </button>
               <button className="rounded-lg p-2 text-text-default transition hover:bg-background-light-sand hover:text-accent-warm-grey" type="button">
@@ -294,7 +338,7 @@ export default function Messages() {
             </div>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto bg-background-warm-off-white/60 p-4">
+          <div className="chat-scrollbar flex-1 space-y-3 overflow-y-auto bg-background-warm-off-white/60 p-4">
             {activeMessages.map((msg) => {
               const isMe = String(msg.senderId) === String(authUserId);
               return (

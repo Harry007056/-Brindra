@@ -73,6 +73,7 @@ export default function Settings({
   const [profile, setProfile] = useState({
     name: authUser?.name || '',
     email: authUser?.email || '',
+    phone: authUser?.phone || '',
     workspaceName: authUser?.workspaceName || 'Team Workspace',
   });
   const [notifications, setNotifications] = useState({ email: true, push: false });
@@ -119,6 +120,7 @@ const roleDisplayName = (role) => {
         setProfile({
           name: nextProfile.name || '',
           email: nextProfile.email || '',
+          phone: nextProfile.phone || '',
           workspaceName: nextProfile.workspaceName || 'Team Workspace',
         });
         setNotifications({
@@ -195,6 +197,7 @@ const roleDisplayName = (role) => {
       {
         name: nextName,
         email: nextEmail,
+        phone: String(profile.phone || '').trim(),
         workspaceName: String(profile.workspaceName || '').trim() || 'Team Workspace',
       },
       'Profile updated'
@@ -357,6 +360,16 @@ const roleDisplayName = (role) => {
                     value={roleDisplay}
                     disabled
                     className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-light-sand px-3 py-2.5 text-sm text-accent-warm-grey outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-text-default">Phone Number</span>
+                  <input
+                    type="tel"
+                    value={profile.phone}
+                    onChange={(event) => setProfile((prev) => ({ ...prev, phone: event.target.value }))}
+                    placeholder="+91 98765 43210"
+                    className="w-full rounded-xl border border-[#88C0D0]/35 bg-background-warm-off-white px-3 py-2.5 text-sm text-accent-warm-grey outline-none transition focus:border-primary-soft-sky focus:ring-2 focus:ring-primary-soft-sky/30"
                   />
                 </label>
                 <label className="space-y-1">

@@ -42,6 +42,184 @@ function formatDueDate(dueDate) {
   });
 }
 
+function parseBooleanFilter(value) {
+  if (typeof value !== 'string') return null;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return null;
+}
+
+function encodeCursor(notification) {
+  if (!notification?._id || !notification?.createdAt) return null;
+  return Buffer.from(
+    JSON.stringify({
+      createdAt: new Date(notification.createdAt).toISOString(),
+      id: String(notification._id),
+    })
+  ).toString('base64url');
+}
+
+function decodeCursor(value) {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(String(value), 'base64url').toString('utf8'));
+    if (!parsed?.createdAt || !parsed?.id || !isObjectId(parsed.id)) return null;
+    const createdAt = new Date(parsed.createdAt);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    return { createdAt, id: parsed.id };
+  } catch {
+    return null;
+  }
+}
+
+function notificationListQuery({ receiverId, type, read, archived }) {
+  const query = {
+    receiverId,
+    deletedAt: null,
+  };
+
+  if (['task', 'mention', 'project', 'file', 'deadline'].includes(String(type || ''))) {
+    query.type = String(type);
+  }
+
+  const readFilter = parseBooleanFilter(read);
+  if (readFilter !== null) {
+    query.read = readFilter;
+  }
+
+  if (archived === 'true') {
+    query.archivedAt = { $ne: null };
+  } else if (archived !== 'all') {
+    query.archivedAt = null;
+  }
+
+  return query;
+}
+
+function serializeNotification(notification) {
+  if (!notification) return null;
+  const plain = typeof notification.toObject === 'function' ? notification.toObject() : notification;
+  return {
+    ...plain,
+    _id: String(plain._id),
+    receiverId: plain.receiverId ? String(plain.receiverId) : null,
+    senderId: plain.senderId ? String(plain.senderId) : null,
+    projectId: plain.projectId ? String(plain.projectId) : null,
+    taskId: plain.taskId ? String(plain.taskId) : null,
+    targetId: plain.targetId ? String(plain.targetId) : null,
+  };
+}
+
+async function notificationCounts(receiverId) {
+  const [unreadCount, grouped] = await Promise.all([
+    Notification.countDocuments({
+      receiverId,
+      deletedAt: null,
+      archivedAt: null,
+      read: false,
+    }),
+    Notification.aggregate([
+      {
+        $match: {
+          receiverId: new mongoose.Types.ObjectId(String(receiverId)),
+          deletedAt: null,
+          archivedAt: null,
+        },
+      },
+      {
+        $group: {
+          _id: '$type',
+          total: { $sum: 1 },
+          unread: {
+            $sum: {
+              $cond: [{ $eq: ['$read', false] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const byType = grouped.reduce((acc, entry) => {
+    acc[String(entry._id || 'other')] = {
+      total: Number(entry.total) || 0,
+      unread: Number(entry.unread) || 0,
+    };
+    return acc;
+  }, {});
+
+  return {
+    unreadCount,
+    byType,
+  };
+}
+
+async function emitNotificationCounts(io, receiverId) {
+  if (!io || !receiverId) return;
+  const counts = await notificationCounts(receiverId);
+  io.to(`user:${String(receiverId)}`).emit('notification:counts', counts);
+}
+
+async function emitNotificationUpdated(io, notification) {
+  if (!io || !notification?.receiverId) return;
+  io.to(`user:${String(notification.receiverId)}`).emit('notification:updated', serializeNotification(notification));
+  await emitNotificationCounts(io, notification.receiverId);
+}
+
+async function emitNotificationDeleted(io, receiverId, notificationId) {
+  if (!io || !receiverId || !notificationId) return;
+  io.to(`user:${String(receiverId)}`).emit('notification:deleted', {
+    _id: String(notificationId),
+  });
+  await emitNotificationCounts(io, receiverId);
+}
+
+async function applyNotificationAction({ receiverId, notificationIds = [], action }) {
+  const query = {
+    receiverId,
+    deletedAt: null,
+  };
+
+  const validIds = notificationIds.filter((id) => isObjectId(id));
+  if (validIds.length > 0) {
+    query._id = { $in: validIds };
+  } else if (notificationIds.length > 0) {
+    return { matched: [], modifiedCount: 0 };
+  }
+
+  const now = new Date();
+  let update = null;
+
+  if (action === 'read') {
+    update = { $set: { read: true, readAt: now } };
+  } else if (action === 'unread') {
+    update = { $set: { read: false }, $unset: { readAt: 1 } };
+  } else if (action === 'archive') {
+    update = { $set: { archivedAt: now } };
+  } else if (action === 'unarchive') {
+    update = { $set: { archivedAt: null } };
+  } else if (action === 'delete') {
+    update = { $set: { deletedAt: now } };
+  } else {
+    return { matched: [], modifiedCount: 0 };
+  }
+
+  const matched = await Notification.find(query).select('_id receiverId');
+  if (matched.length === 0) {
+    return { matched: [], modifiedCount: 0 };
+  }
+
+  const result = await Notification.updateMany(
+    { _id: { $in: matched.map((item) => item._id) } },
+    update
+  );
+
+  return {
+    matched: matched.map((item) => String(item._id)),
+    modifiedCount: Number(result.modifiedCount || result.nModified || 0),
+  };
+}
+
 async function createTaskAssignmentNotification({
   actor,
   receiverId,
@@ -61,14 +239,23 @@ async function createTaskAssignmentNotification({
     senderId: actor?._id || null,
     projectId: task.projectId || project?._id || null,
     taskId: task._id,
+    targetType: 'task',
+    targetId: task._id,
+    route: project?._id ? `/project/${String(project._id)}` : '/tasks',
+    actorName,
     type: 'task',
     title: action === 'reassigned' ? 'Task reassigned to you' : 'Task assigned to you',
     message: `${actorName} ${action} "${task.title}" in ${projectName}${dueLabel ? ` (Due ${dueLabel})` : ''}.`,
     read: false,
+    priority: dueLabel ? 'high' : 'normal',
+    dedupeKey: `${String(receiverId)}:${String(task._id)}:${action}:${String(task.updatedAt || task.createdAt || Date.now())}`,
   });
 
+  const serialized = serializeNotification(notification);
+
   if (io) {
-    io.to(`user:${String(receiverId)}`).emit('notification:new', notification);
+    io.to(`user:${String(receiverId)}`).emit('notification:new', serialized);
+    await emitNotificationCounts(io, receiverId);
   }
 
   return notification;
@@ -84,6 +271,7 @@ router.get('/users', async (req, res) => {
       id: String(user._id),
       name: user.name,
       email: user.email,
+      phone: user.phone || '',
       role: user.role,
       workspaceName: user.workspaceName,
       isActive: user.isActive,
@@ -325,12 +513,57 @@ router.put('/tasks/:taskId', async (req, res, next) => {
 });
 
 router.get('/notifications', async (req, res) => {
-  const notifications = await Notification.find({ receiverId: req.user._id }).sort({ createdAt: -1 }).limit(200);
-  res.json(notifications);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+  const cursor = decodeCursor(req.query.cursor);
+  const query = notificationListQuery({
+    receiverId: req.user._id,
+    type: req.query.type,
+    read: req.query.read,
+    archived: req.query.archived,
+  });
+
+  if (cursor) {
+    query.$or = [
+      { createdAt: { $lt: cursor.createdAt } },
+      { createdAt: cursor.createdAt, _id: { $lt: cursor.id } },
+    ];
+  }
+
+  const [notifications, counts] = await Promise.all([
+    Notification.find(query)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit + 1),
+    notificationCounts(req.user._id),
+  ]);
+
+  const hasMore = notifications.length > limit;
+  const items = hasMore ? notifications.slice(0, limit) : notifications;
+  const nextCursor = hasMore ? encodeCursor(items[items.length - 1]) : null;
+
+  res.json({
+    items: items.map(serializeNotification),
+    nextCursor,
+    unreadCount: counts.unreadCount,
+    counts: counts.byType,
+  });
 });
 
 router.put('/notifications/read-all', async (req, res) => {
-  await Notification.updateMany({ receiverId: req.user._id, read: false }, { $set: { read: true } });
+  const now = new Date();
+  await Notification.updateMany(
+    { receiverId: req.user._id, deletedAt: null, read: false },
+    { $set: { read: true, readAt: now } }
+  );
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${String(req.user._id)}`).emit('notification:read_all', {
+      userId: String(req.user._id),
+      readAt: now.toISOString(),
+    });
+    await emitNotificationCounts(io, req.user._id);
+  }
+
   res.json({ message: 'All notifications marked as read' });
 });
 
@@ -339,6 +572,7 @@ router.put('/notifications/:notificationId/read', async (req, res, next) => {
     const notification = await Notification.findOne({
       _id: req.params.notificationId,
       receiverId: req.user._id,
+      deletedAt: null,
     });
 
     if (!notification) {
@@ -348,15 +582,160 @@ router.put('/notifications/:notificationId/read', async (req, res, next) => {
     }
 
     notification.read = true;
+    notification.readAt = new Date();
     await notification.save();
-    res.json(notification);
+
+    const io = req.app.get('io');
+    await emitNotificationUpdated(io, notification);
+
+    res.json(serializeNotification(notification));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/notifications/:notificationId/unread', async (req, res, next) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.notificationId,
+      receiverId: req.user._id,
+      deletedAt: null,
+    });
+
+    if (!notification) {
+      const error = new Error('Notification not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    notification.read = false;
+    notification.readAt = null;
+    await notification.save();
+
+    const io = req.app.get('io');
+    await emitNotificationUpdated(io, notification);
+
+    res.json(serializeNotification(notification));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/notifications/:notificationId/archive', async (req, res, next) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.notificationId,
+      receiverId: req.user._id,
+      deletedAt: null,
+    });
+
+    if (!notification) {
+      const error = new Error('Notification not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    notification.archivedAt = req.body?.archived === false ? null : new Date();
+    await notification.save();
+
+    const io = req.app.get('io');
+    await emitNotificationUpdated(io, notification);
+
+    res.json(serializeNotification(notification));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/notifications/bulk', async (req, res, next) => {
+  try {
+    const action = String(req.body?.action || '').trim();
+    const notificationIds = Array.isArray(req.body?.notificationIds)
+      ? req.body.notificationIds.map((item) => String(item || ''))
+      : [];
+
+    if (!['read', 'unread', 'archive', 'unarchive', 'delete'].includes(action)) {
+      const error = new Error('Invalid bulk action');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const result = await applyNotificationAction({
+      receiverId: req.user._id,
+      notificationIds,
+      action,
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      if (action === 'delete') {
+        result.matched.forEach((notificationId) => {
+          io.to(`user:${String(req.user._id)}`).emit('notification:deleted', { _id: notificationId });
+        });
+      } else {
+        const updatedItems = await Notification.find({
+          _id: { $in: result.matched },
+          receiverId: req.user._id,
+        });
+        updatedItems.forEach((item) => {
+          io.to(`user:${String(req.user._id)}`).emit('notification:updated', serializeNotification(item));
+        });
+      }
+      await emitNotificationCounts(io, req.user._id);
+    }
+
+    res.json({
+      message: 'Bulk action applied',
+      modifiedCount: result.modifiedCount,
+      notificationIds: result.matched,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/notifications/:notificationId', async (req, res, next) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.notificationId,
+      receiverId: req.user._id,
+      deletedAt: null,
+    });
+
+    if (!notification) {
+      const error = new Error('Notification not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    notification.deletedAt = new Date();
+    await notification.save();
+
+    const io = req.app.get('io');
+    await emitNotificationDeleted(io, req.user._id, notification._id);
+
+    res.json({ message: 'Notification deleted' });
   } catch (error) {
     next(error);
   }
 });
 
 router.delete('/notifications', async (req, res) => {
-  await Notification.deleteMany({ receiverId: req.user._id });
+  const now = new Date();
+  await Notification.updateMany(
+    { receiverId: req.user._id, deletedAt: null },
+    { $set: { deletedAt: now } }
+  );
+
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`user:${String(req.user._id)}`).emit('notification:cleared', {
+      userId: String(req.user._id),
+      deletedAt: now.toISOString(),
+    });
+    await emitNotificationCounts(io, req.user._id);
+  }
+
   res.json({ message: 'Notifications cleared' });
 });
 

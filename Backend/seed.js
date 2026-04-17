@@ -66,7 +66,7 @@ async function run() {
     },
   ]);
 
-  const [taskA, taskB, taskC] = await Task.create([
+const [taskA, taskB, taskC, taskD, taskE, taskF] = await Task.create([
     {
       projectId: projectA._id,
       title: 'Build login flow',
@@ -87,6 +87,27 @@ async function run() {
       assigneeId: lead._id,
       dueDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
       completed: false,
+    },
+    {
+      projectId: projectA._id,
+      title: 'Review accessibility standards',
+      assigneeId: null, // Unassigned
+      dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Overdue
+      completed: false,
+    },
+    {
+      projectId: projectB._id,
+      title: 'Prototype navigation flows',
+      assigneeId: member._id,
+      dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      completed: false,
+    },
+    {
+      projectId: projectA._id,
+      title: 'Performance optimization review',
+      assigneeId: manager._id,
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      completed: true,
     },
   ]);
 

@@ -18,7 +18,7 @@ const router = express.Router();
 
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, email, password, workspaceName, role } = req.body;
+    const { name, email, password, workspaceName, role, phone } = req.body;
 
     if (!name || !email || !password) {
       const error = new Error('Name, email, and password are required');
@@ -37,6 +37,7 @@ router.post('/register', async (req, res, next) => {
     const user = await User.create({
       name: String(name).trim(),
       email: String(email).toLowerCase().trim(),
+      phone: String(phone || '').trim(),
       passwordHash,
       workspaceName: String(workspaceName || '').trim() || 'Team Workspace',
       role: ['team_leader', 'manager', 'member', 'admin'].includes(role) ? role : 'team_leader',
@@ -157,6 +158,7 @@ router.get('/settings', requireAuth, async (req, res) => {
     profile: {
       name: req.user.name,
       email: req.user.email,
+      phone: req.user.phone || '',
       workspaceName: req.user.workspaceName,
     },
     settings: req.user.settings || {},
@@ -165,10 +167,11 @@ router.get('/settings', requireAuth, async (req, res) => {
 
 router.put('/settings', requireAuth, async (req, res, next) => {
   try {
-    const { name, email, workspaceName, settings } = req.body;
+    const { name, email, phone, workspaceName, settings } = req.body;
 
     if (typeof name === 'string') req.user.name = name.trim() || req.user.name;
     if (typeof workspaceName === 'string') req.user.workspaceName = workspaceName.trim() || req.user.workspaceName;
+    if (typeof phone === 'string') req.user.phone = phone.trim();
 
     if (typeof email === 'string' && email.trim()) {
       const normalizedEmail = email.toLowerCase().trim();

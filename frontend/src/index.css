@@ -46,6 +46,34 @@
     @apply fixed inset-0 pointer-events-none bg-center bg-cover opacity-5;
     background-image: url('/leaf-pattern.svg');
   }
+
+  .chat-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--accent-primary-rgb), 0.55) rgba(var(--accent-soft-rgb), 0.14);
+  }
+
+  .chat-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .chat-scrollbar::-webkit-scrollbar-track {
+    background: rgba(var(--accent-soft-rgb), 0.14);
+    border-radius: 999px;
+  }
+
+  .chat-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-primary-rgb), 0.55);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+  }
+
+  .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--accent-primary-rgb), 0.72);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
 }
 
 [data-theme='dark'] .overlay {
